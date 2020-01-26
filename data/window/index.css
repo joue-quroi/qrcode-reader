@@ -1,0 +1,118 @@
+:root {
+  --white: #fff;
+  --dark: #dadada;
+  --error: #ff4e4e;
+  --bg: #eee;
+  --border: #cacaca;
+}
+body {
+  font-size: 13px;
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  margin: 0;
+  display: flex;
+  height: 100vh;
+  background-color: var(--bg);
+}
+tabs-view {
+  flex: 1;
+  background-color: var(--white);
+}
+div[data-id="scan"] {
+  position: relative;
+}
+div[data-id="scan"]::before {
+  content: attr(data-message);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% - 20px);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  white-space: normal;
+  padding: 0 10px;
+}
+div[data-id="display"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+div[data-id="display"] canvas,
+div[data-id="display"] video {
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: auto;
+}
+div[data-id="tools"] {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+div[data-id="scan"] input[type=file] {
+  display: none;
+}
+div[data-id="results"] {
+  position: relative;
+}
+div[data-id="results"] input,
+div[data-id="scan"] [data-id="tools"] > * {
+  border: none;
+  outline: none;
+  background-color: var(--bg);
+  font-size: inherit;
+  height: 32px;
+  line-height: 32px;
+  padding: 0 10px;
+  margin: 2px;
+  cursor: pointer;
+  text-align: center;
+}
+@media screen and (max-width: 600px) {
+  div[data-id="results"] input,
+  div[data-id="scan"] [data-id="tools"] > * {
+    flex: 1;
+  }
+}
+#history {
+  height: 100%;
+  overflow: auto;
+  position: relative;
+}
+#history:empty::before {
+  content: 'There is no history to display!';
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: auto;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#history * {
+  padding: 10px;
+}
+#history pre {
+  font-family: inherit;
+  margin: 0;
+}
+#history a {
+  display: block;
+}
+#history > *:nth-child(even) {
+  background-color: var(--bg);
+}
+
