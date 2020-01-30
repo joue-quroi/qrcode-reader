@@ -1,6 +1,10 @@
 /* global QRCode */
 'use strict';
 
+if (location.href.indexOf('mode=popup') !== -1) {
+  document.body.classList.add('popup');
+}
+
 const tabsView = document.querySelector('tabs-view');
 const canvas = document.querySelector('canvas');
 const video = document.getElementById('video');
@@ -29,7 +33,9 @@ const tools = {
   vidoe: {
     on() {
       navigator.mediaDevices.getUserMedia({
-        video: true
+        video: {
+          facingMode: 'environment'
+        }
       }).then(stream => {
         tools.stream = stream;
         document.querySelector('[data-id="scan"]').dataset.message = '';

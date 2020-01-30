@@ -2,9 +2,10 @@
   "manifest_version": 2,
   "version": "0.1.0",
   "name": "QR Code Reader",
-  "description": "Scanning from webcam or local files with support for EAN-13/UPC-A, UPC-E, EAN-8, Code 128, Code 39, Codabar, Interleaved 2 of 5 and QR Code",
+  "description": "Scanning EAN-13/UPC-A, UPC-E, EAN-8, Code 128, Code 39, Codabar, Interleaved 2 of 5 and QR Codes from webcam or image files",
   "permissions": [
-    "storage"
+    "storage",
+    "contextMenus"
    ],
    "background": {
     "persistent": false,
@@ -12,6 +13,7 @@
       "background.js"
     ]
   },
+  "homepage_url": "https://add0n.com/qrcode-reader.html",
   "icons": {
     "16": "data/icons/16.png",
     "19": "data/icons/19.png",
