@@ -6,24 +6,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
+  <script type="text/javascript" src="chrome.js"></script>
   <tabs-view>
-    <div title="Scan" data-id="scan" data-message=""  data-active="true">
-      <div data-id="display">
-        <video autoplay="true" id="video"></video>
-      </div>
-      <div data-id="display">
-        <canvas></canvas>
-      </div>
-      <div data-id="tools">
-        <label><input type="checkbox" id="auto-start" title="Start webcam on tab switch"> Auto Start</label>
-        <input type="button" value="Start" id="toggle">
-        <label>Local Image <input type="file" accept="image/*"></label>
+    <div title="Scan" data-tab="scan" data-active="true">
+      <div vbox style="height: 100%">
+        <div flex="1" id="display" data-message="">
+          <div>
+            <video autoplay="true" id="video"></video>
+          </div>
+          <div>
+            <canvas></canvas>
+          </div>
+        </div>
+        <div data-id="tools">
+          <label><input type="checkbox" id="auto-start" title="Start webcam on tab switch"> Auto Start</label>
+          <input type="button" value="Start" id="toggle">
+          <label>Local Image <input type="file" accept="image/*"></label>
+        </div>
       </div>
     </div>
-    <div title="Results" data-id="results">
-      <div id="history"></div>
-      <div data-id="tools">
-        <input type="button" id="clean" value="Clear History">
+    <div title="Results" data-tab="results">
+      <div vbox style="height: 100%">
+        <div id="history" flex="1"></div>
+        <div data-id="tools">
+          <input type="button" id="clean" value="Clear History">
+        </div>
       </div>
     </div>
   </tabs-view>

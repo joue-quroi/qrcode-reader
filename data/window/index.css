@@ -21,10 +21,13 @@ tabs-view {
   flex: 1;
   background-color: var(--white);
 }
-div[data-id="scan"] {
+input[type=file] {
+  display: none;
+}
+#display {
   position: relative;
 }
-div[data-id="scan"]::before {
+#display::before {
   content: attr(data-message);
   position: absolute;
   top: 0;
@@ -38,7 +41,7 @@ div[data-id="scan"]::before {
   white-space: normal;
   padding: 0 20px;
 }
-div[data-id="display"] {
+#display > div {
   position: absolute;
   top: 0;
   left: 0;
@@ -48,33 +51,26 @@ div[data-id="display"] {
   align-items: center;
   justify-content: center;
 }
-div[data-id="display"] canvas,
-div[data-id="display"] video {
+#display canvas,
+#display video {
   max-width: 100%;
   max-height: 100%;
+}
+#display[data-mode=video] canvas,
+#display[data-mode=video] video {
   width: 100%;
   height: auto;
 }
 div[data-id="tools"] {
-  position: absolute;
-  bottom: 0;
-  left: 0;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: flex-end;
 }
-div[data-id="scan"] input[type=file] {
-  display: none;
-}
-div[data-id="results"] {
-  position: relative;
-}
-div[data-id="results"] input,
-div[data-id="scan"] [data-id="tools"] > * {
+[data-id="tools"] > * {
   border: none;
   outline: none;
-  background-color: #f6f6f6;
+  background-color: var(--bg);
   font-size: inherit;
   height: 32px;
   line-height: 32px;
@@ -83,26 +79,19 @@ div[data-id="scan"] [data-id="tools"] > * {
   cursor: pointer;
   text-align: center;
 }
-#history {
-  height: 100%;
-  overflow: auto;
-  position: relative;
-}
 @media screen and (max-width: 600px) {
-  #history {
-    height: calc(100% - 45px);
-  }
-  div[data-id="results"] input,
-  div[data-id="scan"] [data-id="tools"] > * {
+  [data-id="tools"] > * {
     flex: 1;
     height: 45px;
     line-height: 45px;
     margin: 0 1px 0 0;
   }
-  div[data-id="results"] input:last-child,
-  div[data-id="scan"] [data-id="tools"] > :last-child {
+  [data-id="tools"] > :last-child {
     margin-right: 0;
   }
+}
+#history {
+  position: relative;
 }
 #history:empty::before {
   content: 'There is no history to display!';
@@ -124,10 +113,14 @@ div[data-id="scan"] [data-id="tools"] > * {
   margin: 0;
   white-space: pre-line;
 }
-#history a {
-  display: block;
-}
 #history > *:nth-child(even) {
   background-color: var(--bg);
 }
 
+[vbox] {
+  display: flex;
+  flex-direction: column;
+}
+[flex="1"] {
+  flex: 1;
+}

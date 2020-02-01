@@ -22,6 +22,9 @@ const hashCode = s => Array.from(s).reduce((s, c) => Math.imul(31, s) + c.charCo
 
 qrcode.on('detect', e => {
   qrcode.draw(e, canvas);
+  if (tools.stream && tools.stream.active) {
+    tools.vidoe.off();
+  }
   // add to update history
   tools.append(e);
 });
@@ -38,7 +41,7 @@ const tools = {
         }
       }).then(stream => {
         tools.stream = stream;
-        document.querySelector('[data-id="scan"]').dataset.message = '';
+        document.querySelector('[data-message]').dataset.message = '';
         video.srcObject = stream;
         video.style.visibility = 'visible';
         const detect = () => {
@@ -51,17 +54,17 @@ const tools = {
         tools.vidoe.id = window.setInterval(detect, 200);
         detect();
       }).catch(e => {
-        document.querySelector('[data-id="scan"]').dataset.message = e.message;
+        document.querySelector('[data-message]').dataset.message = e.message;
       });
     },
     off() {
-      document.querySelector('[data-id="scan"]').dataset.message = 'Click on the "Start" button to scan from webcam or drop a local QR code or Bar code';
       window.clearInterval(tools.vidoe.id);
       try {
         for (const track of tools.stream.getTracks()) {
           track.stop();
         }
         video.style.visibility = 'hidden';
+        qrcode.clean(canvas);
       }
       catch (e) {}
     }
@@ -98,21 +101,21 @@ const tools = {
       }
     }
     if (focus) {
-      window.setTimeout(() => tabsView.keypress({
+      tabsView.keypress({
         metaKey: true,
         code: 'Digit2',
         key: 2
-      }), 1000);
+      });
     }
   }
 };
 
 // tab change
 tabsView.addEventListener('tabs-view::change', ({detail}) => {
-  if (detail.dataset.id === 'scan' && document.getElementById('auto-start').checked) {
+  if (detail.dataset.tab === 'scan' && document.getElementById('auto-start').checked) {
     tools.vidoe.on();
   }
-  else {
+  if (detail.dataset.tab === 'results' && tools.stream && tools.stream.active) {
     tools.vidoe.off();
   }
 });
@@ -122,6 +125,7 @@ tabsView.addEventListener('tabs-view::change', ({detail}) => {
   const next = file => {
     const img = new Image();
     img.onload = function() {
+      document.querySelector('[data-message]').dataset.message = '';
       const ctx = canvas.getContext('2d');
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
@@ -133,7 +137,10 @@ tabsView.addEventListener('tabs-view::change', ({detail}) => {
     img.src = URL.createObjectURL(file);
   };
   document.querySelector('input[type=file]').addEventListener('change', e => {
+    tools.vidoe.off();
+
     next(e.target.files[0]);
+    e.target.value = '';
   });
   document.addEventListener('dragover', e => e.preventDefault());
   document.addEventListener('drop', e => {
@@ -151,11 +158,11 @@ chrome.storage.local.get(prefs, ps => {
   Object.assign(prefs, ps);
   document.getElementById('auto-start').checked = prefs['auto-start'];
   // tabsView already loaded
-  if (prefs['auto-start'] && tabsView.ready && tabsView.active().dataset.id === 'scan') {
+  if (prefs['auto-start'] && tabsView.ready && tabsView.active().dataset.tab === 'scan') {
     tools.vidoe.on();
   }
   else {
-    tools.vidoe.off();
+    document.querySelector('[data-message]').dataset.message = 'Click on the "Start" button to scan from webcam or drop a local QR code or Bar code';
   }
   // history
   for (const e of prefs.history.reverse()) {
@@ -171,10 +178,13 @@ document.getElementById('auto-start').addEventListener('change', e => {
 });
 // video
 video.addEventListener('play', () => {
+  document.getElementById('display').dataset.mode = 'video';
   document.getElementById('toggle').value = 'Stop';
 });
 video.addEventListener('suspend', () => {
+  document.getElementById('display').dataset.mode = 'image';
   document.getElementById('toggle').value = 'Start';
+  document.querySelector('[data-message]').dataset.message = 'Click on the "Start" button to scan from webcam or drop a local QR code or Bar code';
 });
 // toggle
 document.getElementById('toggle').addEventListener('click', () => {
