@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "QR Code Reader",
   "description": "Scanning EAN-13/UPC-A, UPC-E, EAN-8, Code 128, Code 39, Codabar, Interleaved 2 of 5 and QR Codes from webcam or image files",
   "permissions": [
