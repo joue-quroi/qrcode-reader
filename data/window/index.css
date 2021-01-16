@@ -66,32 +66,45 @@ div[data-id="tools"] {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  background-color: var(--bg);
+}
+div[data-id="tools"] input[type=checkbox] {
+  display: none;
+}
+div[data-id="tools"] input:checked + label {
+  font-weight: bold;
 }
 [data-id="tools"] > * {
   border: none;
   outline: none;
-  background-color: var(--bg);
   font-size: inherit;
-  height: 32px;
-  line-height: 32px;
-  padding: 0 10px;
-  margin: 0 2px 2px 0;
+  padding: 15px 10px;
   cursor: pointer;
   text-align: center;
+  min-width: 100px;
+  user-select: none;
+  background-color: transparent;
+  position: relative;
+}
+[data-id="tools"] > *:not(:last-child)::after {
+  content: '';
+  width: 1px;
+  background-color: #ababab;
+  height: 15px;
+  position: absolute;
+  right: 0;
+}
+[data-id="tools"] > *:hover {
+  background-color: #c0e7ff;
 }
 @media screen and (max-width: 600px) {
   [data-id="tools"] > * {
     flex: 1;
-    height: 45px;
-    line-height: 45px;
-    margin: 0 1px 0 0;
-  }
-  [data-id="tools"] > :last-child {
-    margin-right: 0;
   }
 }
 #history {
   position: relative;
+  overflow: auto;
 }
 #history:empty::before {
   content: 'There is no history to display!';
@@ -114,7 +127,7 @@ div[data-id="tools"] {
   white-space: pre-line;
 }
 #history > *:nth-child(even) {
-  background-color: var(--bg);
+  background-color: #e6e6e6;
 }
 
 [vbox] {

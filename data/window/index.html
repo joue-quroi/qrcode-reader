@@ -18,9 +18,10 @@
           </div>
         </div>
         <div data-id="tools">
-          <label><input type="checkbox" id="auto-start" title="Start webcam on tab switch"> Auto Start</label>
-          <input type="button" value="Start" id="toggle">
-          <label>Local Image <input type="file" accept="image/*"></label>
+          <input type="checkbox" id="auto-start" title="Start webcam on tab switch">
+          <label for="auto-start" title="Auto Start">Auto Start</label>
+          <label id="toggle" title="Start">Start</label>
+          <label title="Local Image">Local Image <input type="file" accept="image/*"></label>
         </div>
       </div>
     </div>
@@ -28,7 +29,7 @@
       <div vbox style="height: 100%">
         <div id="history" flex="1"></div>
         <div data-id="tools">
-          <input type="button" id="clean" value="Clear History">
+          <input type="button" id="clean" value="Clear History" title="Clear History">
         </div>
       </div>
     </div>

@@ -40,8 +40,8 @@ class TabsView extends HTMLElement {
           justify-content: center;
           min-width: 80px;
           cursor: pointer;
-          padding: 8px 10px;
           -webkit-tap-highlight-color: transparent;
+          padding: 15px 10px;
         }
         #tabs > span[data-active="true"] {
           color: var(--fg-dark);
@@ -52,7 +52,6 @@ class TabsView extends HTMLElement {
           }
           #tabs > span {
             flex: 1;
-            padding: 15px 10px;
           }
         }
         #extra {

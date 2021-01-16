@@ -1,6 +1,17 @@
 /* global QRCode */
 'use strict';
 
+const notify = (msg, revert = true) => {
+  document.querySelector('[data-message]').dataset.message = msg === undefined ? notify.DEFALUT : msg;
+  clearTimeout(notify.id);
+  if (revert) {
+    notify.id = setTimeout(() => {
+      document.querySelector('[data-message]').dataset.message = notify.DEFALUT;
+    }, 3000);
+  }
+};
+notify.DEFALUT = 'Click on the "Start" button to scan from webcam or drop a local QR code or Bar code';
+
 if (location.href.indexOf('mode=popup') !== -1) {
   document.body.classList.add('popup');
 }
@@ -41,7 +52,7 @@ const tools = {
         }
       }).then(stream => {
         tools.stream = stream;
-        document.querySelector('[data-message]').dataset.message = '';
+        notify('', false);
         video.srcObject = stream;
         video.style.visibility = 'visible';
         const detect = () => {
@@ -54,7 +65,7 @@ const tools = {
         tools.vidoe.id = window.setInterval(detect, 200);
         detect();
       }).catch(e => {
-        document.querySelector('[data-message]').dataset.message = e.message;
+        notify(e.message);
       });
     },
     off() {
@@ -125,7 +136,7 @@ tabsView.addEventListener('tabs-view::change', ({detail}) => {
   const next = file => {
     const img = new Image();
     img.onload = function() {
-      document.querySelector('[data-message]').dataset.message = '';
+      notify('', false);
       const ctx = canvas.getContext('2d');
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
@@ -162,7 +173,7 @@ chrome.storage.local.get(prefs, ps => {
     tools.vidoe.on();
   }
   else {
-    document.querySelector('[data-message]').dataset.message = 'Click on the "Start" button to scan from webcam or drop a local QR code or Bar code';
+    notify(undefined, false);
   }
   // history
   for (const e of prefs.history.reverse()) {
@@ -184,7 +195,7 @@ video.addEventListener('play', () => {
 video.addEventListener('suspend', () => {
   document.getElementById('display').dataset.mode = 'image';
   document.getElementById('toggle').value = 'Start';
-  document.querySelector('[data-message]').dataset.message = 'Click on the "Start" button to scan from webcam or drop a local QR code or Bar code';
+  notify(undefined, false);
 });
 // toggle
 document.getElementById('toggle').addEventListener('click', () => {
