@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>QR Code Reader</title>
+  <link rel="stylesheet" type="text/css" href="index.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+</head>
+<body>
+  <tabs-view>
+    <div title="Scan" data-tab="scan" data-active="true">
+      <div vbox style="height: 100%">
+        <div flex="1" id="display" data-message="">
+          <div>
+            <video autoplay="true" id="video"></video>
+          </div>
+          <div>
+            <canvas></canvas>
+          </div>
+        </div>
+        <div data-id="tools">
+          <label for="auto-start" hbox title="Automatically start the webcam scanning on tab switch or startup">
+            <input type="checkbox" id="auto-start">
+            <svg version="1.1" viewBox="0 0 24 24" width="12">
+              <path d="M22 2v20h-20v-20h20zm2-2h-24v24h24v-24zm-5.541 8.409l-1.422-1.409-7.021 7.183-3.08-2.937-1.395 1.435 4.5 4.319 8.418-8.591z"/>
+              <rect x="1" y="1" width="22" height="22" stroke="#000" stroke-width="2" fill="transparent"/>
+            </svg>Auto Start</label>
+          <label id="toggle" title="Start/Stop webcam scanning manually">Start</label>
+          <label title="Scan a local image from disk">Local Image <input type="file" accept="image/*"></label>
+        </div>
+      </div>
+    </div>
+    <div title="Results" data-tab="results">
+      <div vbox style="height: 100%">
+        <div id="history" flex="1"></div>
+        <div data-id="tools">
+          <input type="button" id="clean" value="Clear History" title="Clear History">
+        </div>
+      </div>
+    </div>
+  </tabs-view>
+
+  <script type="text/javascript" src="components/tabs-view.js"></script>
+  <script type="text/javascript" src="QRCode.js"></script>
+  <script type="text/javascript" src="ZBar/scan.js"></script>
+  <script type="text/javascript" src="index.js"></script>
+</body>
+</html>

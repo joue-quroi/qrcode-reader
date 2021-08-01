@@ -24,9 +24,9 @@ const qrcode = new QRCode();
 
 const prefs = {
   'history': [],
-  'auto-start': true,
+  'auto-start': false,
   'save': true,
-  'max': 30
+  'max': 100
 };
 
 const hashCode = s => Array.from(s).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0);
@@ -91,12 +91,17 @@ const tools = {
       history.insertAdjacentElement('afterbegin', div);
     }
     else {
+      const urlify = content => {
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return content.replace(urlRegex, '<a href="$1" target=_blank>$1</a>');
+      };
+
       const div = document.createElement('div');
       div.id = id;
       const symbol = document.createElement('span');
-      symbol.textContent = e.symbol;
+      symbol.textContent = 'Type: ' + e.symbol;
       const content = document.createElement('pre');
-      content.textContent = e.data;
+      content.innerHTML = urlify(e.data);
       div.appendChild(symbol);
       div.appendChild(content);
       history.insertAdjacentElement('afterbegin', div);
@@ -190,11 +195,11 @@ document.getElementById('auto-start').addEventListener('change', e => {
 // video
 video.addEventListener('play', () => {
   document.getElementById('display').dataset.mode = 'video';
-  document.getElementById('toggle').value = 'Stop';
+  document.getElementById('toggle').textContent = 'Stop';
 });
 video.addEventListener('suspend', () => {
   document.getElementById('display').dataset.mode = 'image';
-  document.getElementById('toggle').value = 'Start';
+  document.getElementById('toggle').textContent = 'Start';
   notify(undefined, false);
 });
 // toggle

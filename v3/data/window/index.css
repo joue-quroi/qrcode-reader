@@ -1,0 +1,156 @@
+:root {
+  --white: #fff;
+  --dark: #dadada;
+  --error: #ff4e4e;
+  --bg: #eee;
+  --border: #cacaca;
+  --link: #0077cc;
+}
+body {
+  font-size: 13px;
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  margin: 0;
+  display: flex;
+  height: 100vh;
+  background-color: var(--bg);
+}
+body.popup {
+  width: 600px;
+  height: 500px;
+}
+tabs-view {
+  flex: 1;
+  background-color: var(--white);
+}
+input[type=file] {
+  display: none;
+}
+a {
+  color: var(--link);
+}
+#display {
+  position: relative;
+}
+#display::before {
+  content: attr(data-message);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% - 40px);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  white-space: normal;
+  padding: 0 20px;
+}
+#display > div {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#display canvas,
+#display video {
+  max-width: 100%;
+  max-height: 100%;
+}
+#display[data-mode=video] canvas,
+#display[data-mode=video] video {
+  width: 100%;
+  height: auto;
+}
+div[data-id="tools"] {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  background-color: var(--bg);
+}
+div[data-id="tools"] input[type=checkbox] {
+  display: none;
+}
+div[data-id="tools"] input:not(:checked) + svg > path {
+  display: none;
+}
+[data-id="tools"] > * {
+  border: none;
+  outline: none;
+  font-size: inherit;
+  padding: 15px 10px;
+  cursor: pointer;
+  text-align: center;
+  min-width: 100px;
+  user-select: none;
+  background-color: transparent;
+  position: relative;
+}
+[data-id="tools"]:not(:hover) > *:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  width: 1px;
+  background-color: var(--border);
+  height: 16px;
+}
+[data-id="tools"] > *:hover {
+  background-color: #c0e7ff;
+}
+@media screen and (max-width: 600px) {
+  [data-id="tools"] > * {
+    flex: 1;
+  }
+}
+[data-id="tools"] svg {
+  margin-right: 5px;
+  margin-top: -2px;
+}
+#history {
+  position: relative;
+  overflow: auto;
+}
+#history:empty::before {
+  content: 'There is no history to display!';
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: auto;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#history > div {
+  padding: 10px;
+}
+#history > div > span {
+  padding-bottom: 5px;
+  display: block;
+}
+#history pre {
+  font-family: inherit;
+  margin: 0;
+  white-space: pre-line;
+}
+#history > *:nth-child(even) {
+  background-color: #e6e6e6;
+}
+
+[hbox] {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+[vbox] {
+  display: flex;
+  flex-direction: column;
+}
+[flex="1"] {
+  flex: 1;
+}

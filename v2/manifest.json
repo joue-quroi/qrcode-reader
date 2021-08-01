@@ -1,0 +1,30 @@
+{
+  "manifest_version": 2,
+  "version": "0.1.5",
+  "name": "QR Code Reader",
+  "description": "a multiple QR- and bar-code scanner that supports scanning from webcam and local images",
+  "permissions": [
+    "storage",
+    "contextMenus"
+   ],
+   "background": {
+    "persistent": false,
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "homepage_url": "https://add0n.com/qrcode-reader.html",
+  "icons": {
+    "16": "data/icons/16.png",
+    "19": "data/icons/19.png",
+    "32": "data/icons/32.png",
+    "38": "data/icons/38.png",
+    "48": "data/icons/48.png",
+    "64": "data/icons/64.png",
+    "128": "data/icons/128.png",
+    "192": "data/icons/192.png",
+    "256": "data/icons/256.png",
+    "512": "data/icons/512.png"
+  },
+  "browser_action": {}
+}

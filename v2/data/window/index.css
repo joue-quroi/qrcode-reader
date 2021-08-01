@@ -4,6 +4,7 @@
   --error: #ff4e4e;
   --bg: #eee;
   --border: #cacaca;
+  --link: #0077cc;
 }
 body {
   font-size: 13px;
@@ -23,6 +24,9 @@ tabs-view {
 }
 input[type=file] {
   display: none;
+}
+a {
+  color: var(--link);
 }
 #display {
   position: relative;
@@ -71,8 +75,8 @@ div[data-id="tools"] {
 div[data-id="tools"] input[type=checkbox] {
   display: none;
 }
-div[data-id="tools"] input:checked + label {
-  font-weight: bold;
+div[data-id="tools"] input:not(:checked) + svg > path {
+  display: none;
 }
 [data-id="tools"] > * {
   border: none;
@@ -86,13 +90,13 @@ div[data-id="tools"] input:checked + label {
   background-color: transparent;
   position: relative;
 }
-[data-id="tools"] > *:not(:last-child)::after {
+[data-id="tools"]:not(:hover) > *:not(:last-child)::after {
   content: '';
-  width: 1px;
-  background-color: #ababab;
-  height: 15px;
   position: absolute;
   right: 0;
+  width: 1px;
+  background-color: var(--border);
+  height: 16px;
 }
 [data-id="tools"] > *:hover {
   background-color: #c0e7ff;
@@ -101,6 +105,10 @@ div[data-id="tools"] input:checked + label {
   [data-id="tools"] > * {
     flex: 1;
   }
+}
+[data-id="tools"] svg {
+  margin-right: 5px;
+  margin-top: -2px;
 }
 #history {
   position: relative;
@@ -118,8 +126,12 @@ div[data-id="tools"] input:checked + label {
   align-items: center;
   justify-content: center;
 }
-#history * {
+#history > div {
   padding: 10px;
+}
+#history > div > span {
+  padding-bottom: 5px;
+  display: block;
 }
 #history pre {
   font-family: inherit;
@@ -130,6 +142,11 @@ div[data-id="tools"] input:checked + label {
   background-color: #e6e6e6;
 }
 
+[hbox] {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 [vbox] {
   display: flex;
   flex-direction: column;

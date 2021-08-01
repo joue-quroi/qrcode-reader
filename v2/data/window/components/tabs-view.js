@@ -12,7 +12,7 @@ class TabsView extends HTMLElement {
           --bg-white: #fff;
           --bg-dark: #f6f6f6;
           --fg-dark: #000;
-          --fg-white: #cacaca;
+          --fg-white: #a0a0a0;
 
           display: flex;
           flex-direction: column;
@@ -34,7 +34,8 @@ class TabsView extends HTMLElement {
           display: none;
         }
         #tabs > span {
-          color: var(--fg-white);
+          color: var(--fg-white, #a0a0a0);
+          text-shadow: 1px 1px var(--disabled-shadow, #fcffff);
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -45,6 +46,7 @@ class TabsView extends HTMLElement {
         }
         #tabs > span[data-active="true"] {
           color: var(--fg-dark);
+          text-shadow: none;
         }
         @media screen and (max-width: 600px)  {
           #tabs {

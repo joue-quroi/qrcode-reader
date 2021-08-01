@@ -88,7 +88,8 @@ class QRCode {
     ctx.lineWidth = 1;
     ctx.setLineDash([6]);
     ctx.strokeStyle = 'blue';
-    ctx.strokeRect(...this.rect(e));
+    const [x, y, w, h] = this.rect(e);
+    ctx.strokeRect(x - 10, y - 10, w + 20, h + 20);
   }
   clean(canvas) {
     const ctx = canvas.getContext('2d');
