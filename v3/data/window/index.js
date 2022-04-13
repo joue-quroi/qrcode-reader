@@ -31,8 +31,14 @@ const prefs = {
 
 const hashCode = s => Array.from(s).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0);
 
+const cache = new Set();
+
 qrcode.on('detect', e => {
-  qrcode.draw(e, canvas);
+  if (cache.has(e.data) === false) {
+    qrcode.draw(e, canvas);
+    cache.add(e.data);
+  }
+
   if (tools.stream && tools.stream.active) {
     tools.vidoe.off();
   }
@@ -81,6 +87,7 @@ const tools = {
     }
   },
   async detect(source, width, height) {
+    cache.clear();
     await qrcode.ready();
     qrcode.detect(source, width, height);
   },

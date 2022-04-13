@@ -1,8 +1,7 @@
-/* global Module */
+/* global Module, BarcodeDetector */
 'use strict';
 
 window.Module = {
-
   onRuntimeInitialized() {
     Module.onReady = () => Promise.resolve();
     for (const resolve of Module.onReadyCache) {
@@ -18,7 +17,7 @@ window.Module = {
   }
 };
 
-class QRCode {
+class WasmQRCode {
   constructor(canvas) {
     canvas = canvas || document.createElement('canvas');
     Object.assign(this, {
@@ -76,7 +75,7 @@ class QRCode {
       Math.min(...e.polygon.filter((a, i) => i % 2 === 1)),
       Math.max(...e.polygon.filter((a, i) => i % 2 === 1))
     ];
-    if (e.symbol === 'QR-Code') {
+    if (e.symbol.toUpperCase() === 'QR-CODE' || e.origin === 'native') {
       return [e.polygon[0], e.polygon[1], xs[1] - e.polygon[0], ys[1] - e.polygon[1]];
     }
     else {
@@ -85,11 +84,10 @@ class QRCode {
   }
   draw(e, canvas = this.canvas) {
     const ctx = canvas.getContext('2d');
-    ctx.lineWidth = 1;
-    ctx.setLineDash([6]);
-    ctx.strokeStyle = 'blue';
+    ctx.fillStyle = e.origin === 'native' ? 'red' : 'blue';
+    ctx.globalAlpha = 0.2;
     const [x, y, w, h] = this.rect(e);
-    ctx.strokeRect(x - 10, y - 10, w + 20, h + 20);
+    ctx.fillRect(x - 10, y - 10, w + 20, h + 20);
   }
   clean(canvas) {
     const ctx = canvas.getContext('2d');
@@ -103,5 +101,40 @@ class QRCode {
     for (const c of (this.events[name] || [])) {
       c(...args);
     }
+  }
+}
+
+class QRCode extends WasmQRCode {
+  constructor(...args) {
+    super(...args);
+
+    if (typeof BarcodeDetector !== 'undefined') {
+      BarcodeDetector.getSupportedFormats().then(supportedFormats => {
+        if (supportedFormats.length) {
+          this.barcodeDetector = new BarcodeDetector({formats: supportedFormats});
+        }
+      });
+    }
+  }
+  detect(source, width, height) {
+    if (this.barcodeDetector) {
+      const {ctx} = this;
+      const image = ctx.getImageData(0, 0, width, height);
+      // use native
+      this.barcodeDetector.detect(image).then(barcodes => {
+        for (const barcode of barcodes) {
+          this.emit('detect', {
+            origin: 'native',
+            symbol: barcode.format.toUpperCase().replace('_', '-'),
+            data: barcode.rawValue,
+            polygon: barcode.cornerPoints.map(o => [o.x, o.y]).flat()
+          });
+        }
+      });
+    }
+    try {
+      super.detect(source, width, height);
+    }
+    catch (e) {}
   }
 }
