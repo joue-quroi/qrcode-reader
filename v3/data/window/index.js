@@ -52,12 +52,21 @@ document.addEventListener('keydown', e => tabsView.keypress(e));
 const tools = {
   vidoe: {
     on() {
-      navigator.mediaDevices.getUserMedia({
+      const deviceId = document.getElementById('devices').value;
+
+      const o = deviceId ? {
+        video: {
+          deviceId
+        }
+      } : {
         video: {
           facingMode: 'environment'
         }
-      }).then(stream => {
+      };
+
+      navigator.mediaDevices.getUserMedia(o).then(stream => {
         tools.stream = stream;
+
         notify('', false);
         video.srcObject = stream;
         video.style.visibility = 'visible';
@@ -226,3 +235,26 @@ document.getElementById('clean').addEventListener('click', () => {
     });
   }
 });
+// Camera selector
+chrome.storage.local.get({
+  camera: 0
+}, prefs => {
+  navigator.mediaDevices.enumerateDevices().then(devices => {
+    const videoinputs = devices.filter(d => d.kind === 'videoinput');
+
+    const parent = document.getElementById('devices');
+    for (const device of videoinputs) {
+      const option = document.createElement('option');
+      option.value = device.deviceId;
+      option.textContent = device.label || `Camera ${parent.length + 1}`;
+      parent.appendChild(option);
+    }
+    parent.selectedIndex = prefs.camera;
+  }).catch(e => console.warn(e));
+});
+document.getElementById('devices').addEventListener('change', e => chrome.storage.local.set({
+  camera: e.target.selectedIndex
+}, () => {
+  tools.vidoe.off();
+  tools.vidoe.on();
+}));
