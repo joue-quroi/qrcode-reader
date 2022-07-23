@@ -1,4 +1,2 @@
-Based on:
-
-https://barkeywolf.consulting/barcode-scanner-webassembly-demo/a.out.js
-https://barkeywolf.consulting/barcode-scanner-webassembly-demo/a.out.wasm
+https://cdn.jsdelivr.net/npm/zbar.wasm@2.1.1/dist/zbar.js
+https://cdn.jsdelivr.net/npm/zbar.wasm@2.1.1/dist/zbar.wasm

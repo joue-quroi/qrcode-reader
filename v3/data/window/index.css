@@ -4,7 +4,7 @@
   --error: #ff4e4e;
   --bg: #eee;
   --border: #cacaca;
-  --link: #0077cc;
+  --link: #07c;
 }
 body {
   font-size: 13px;
@@ -101,6 +101,7 @@ div[data-id="tools"] input:not(:checked) + svg > path {
 [data-id="tools"] > *:hover {
   background-color: #c0e7ff;
 }
+
 @media screen and (max-width: 600px) {
   [data-id="tools"] > * {
     flex: 1;
@@ -140,6 +141,22 @@ div[data-id="tools"] input:not(:checked) + svg > path {
 }
 #history > *:nth-child(even) {
   background-color: #e6e6e6;
+}
+#history > div:first-child {
+  animation-name: highlight;
+  animation-duration: 2s;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: #f0f22f;
+  }
+  100% {
+    background-color: transparent;
+  }
 }
 
 div[data-tab="scan"] {

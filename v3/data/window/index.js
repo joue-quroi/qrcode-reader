@@ -1,6 +1,8 @@
 /* global QRCode */
 'use strict';
 
+const args = new URLSearchParams(location.search);
+
 const notify = (msg, revert = true) => {
   document.querySelector('[data-message]').dataset.message = msg === undefined ? notify.DEFALUT : msg;
   clearTimeout(notify.id);
@@ -153,20 +155,22 @@ tabsView.addEventListener('tabs-view::change', ({detail}) => {
 });
 
 // on image
-{
+const listen = () => {
   const next = file => {
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = function() {
       notify('', false);
       const ctx = canvas.getContext('2d');
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       tools.detect(img, img.naturalWidth, img.naturalHeight);
     };
-    img.src = URL.createObjectURL(file);
+    img.onerror = e => notify(e.message || 'Loading failed. Use right-click context menu to allow cross-origin access');
+    img.src = typeof file === 'string' ? file : URL.createObjectURL(file);
   };
   document.querySelector('input[type=file]').addEventListener('change', e => {
     tools.vidoe.off();
@@ -183,24 +187,72 @@ tabsView.addEventListener('tabs-view::change', ({detail}) => {
       }
     }
   });
-}
+  if (args.has('href')) {
+    next(args.get('href'));
+  }
+};
 
 // init
-chrome.storage.local.get(prefs, ps => {
-  Object.assign(prefs, ps);
-  document.getElementById('auto-start').checked = prefs['auto-start'];
-  // tabsView already loaded
-  if (prefs['auto-start'] && tabsView.ready && tabsView.active().dataset.tab === 'scan') {
-    tools.vidoe.on();
+document.addEventListener('DOMContentLoaded', () => {
+  // next
+  const next = () => chrome.storage.local.get(prefs, ps => {
+    Object.assign(prefs, ps);
+    document.getElementById('auto-start').checked = prefs['auto-start'];
+    // tabsView already loaded
+    if (prefs['auto-start'] && tabsView.ready && tabsView.active().dataset.tab === 'scan' && args.has('href') === false) {
+      tools.vidoe.on();
+    }
+    else {
+      notify(undefined, false);
+    }
+    // history
+    for (const e of prefs.history.reverse()) {
+      tools.append(e, false);
+    }
+    //
+    listen();
+  });
+
+  // install network
+  if (chrome.declarativeNetRequest) {
+    chrome.runtime.sendMessage({
+      method: 'me'
+    }, tabId => {
+      if (tabId) {
+        chrome.declarativeNetRequest.updateSessionRules({
+          removeRuleIds: [tabId],
+          addRules: [{
+            'id': tabId,
+            'priority': 1,
+            'action': {
+              'type': 'modifyHeaders',
+              'requestHeaders': [{
+                'operation': 'remove',
+                'header': 'origin'
+              }],
+              'responseHeaders': [{
+                'operation': 'set',
+                'header': 'Access-Control-Allow-Origin',
+                'value': '*'
+              }]
+            },
+            'condition': {
+              'resourceTypes': ['image'],
+              'tabIds': [tabId]
+            }
+          }]
+        }, next);
+      }
+      else {
+        next();
+      }
+    });
   }
   else {
-    notify(undefined, false);
-  }
-  // history
-  for (const e of prefs.history.reverse()) {
-    tools.append(e, false);
+    next();
   }
 });
+
 // prefs
 document.getElementById('auto-start').addEventListener('change', e => {
   chrome.storage.local.set({

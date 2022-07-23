@@ -1,12 +1,18 @@
 {
   "manifest_version": 3,
-  "version": "0.2.2",
+  "version": "0.2.3",
   "name": "QR Code Reader",
   "description": "a multiple QR- and bar-code scanner that supports scanning from webcam and local images",
   "permissions": [
     "storage",
     "contextMenus"
    ],
+  "optional_permissions": [
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
+  ],
    "background": {
     "service_worker": "worker.js"
   },
@@ -23,5 +29,8 @@
     "256": "data/icons/256.png",
     "512": "data/icons/512.png"
   },
-  "action": {}
+  "action": {},
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
 }

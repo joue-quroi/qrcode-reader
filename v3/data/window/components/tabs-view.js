@@ -99,11 +99,13 @@ class TabsView extends HTMLElement {
   }
   keypress(e) {
     const meta = e.metaKey || e.ctrlKey;
+
     if (e.code.startsWith('Digit') && meta) {
       if (e.preventDefault) {
         e.preventDefault();
       }
       const input = this.elements.tabs.children[Number(e.key) - 1];
+
       if (input) {
         input.click();
       }
@@ -156,7 +158,9 @@ class TabsView extends HTMLElement {
         console.warn('Cannot find the active tab element');
       }
     });
-    resize.observe(this);
+    setTimeout(() => {
+      resize.observe(this);
+    }, 1000);
     // IntersectionObserver
     const intersect = entries => {
       for (const e of entries) {

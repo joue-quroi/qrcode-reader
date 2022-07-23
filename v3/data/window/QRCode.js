@@ -1,21 +1,76 @@
-/* global Module, BarcodeDetector */
-'use strict';
+/* global instantiate, BarcodeDetector */
 
-window.Module = {
-  onRuntimeInitialized() {
-    Module.onReady = () => Promise.resolve();
-    for (const resolve of Module.onReadyCache) {
-      resolve();
-    }
-    delete Module.onReadyCache;
-  },
-  onReadyCache: [],
-  onReady() {
-    return new Promise(resolve => {
-      Module.onReadyCache.push(resolve);
-    });
-  }
+const TYPES = {
+  8: 'EAN-8',
+  9: 'UPC-E',
+  10: 'ISBN-10',
+  12: 'UPC-A',
+  13: 'EAN-13',
+  14: 'ISBN-13',
+  25: 'Interleaved 2 of 5',
+  39: 'Code 39',
+  57: 'PDF417',
+  64: 'QR Code',
+  128: 'Code 128'
 };
+
+class TypePointer {
+  constructor(ptr, buf) {
+    this.ptr = ptr;
+    this.ptr32 = ptr >> 2;
+    this.buf = buf;
+    this.HEAP8 = new Int8Array(buf);
+    this.HEAPU32 = new Uint32Array(buf);
+    this.HEAP32 = new Int32Array(buf);
+  }
+}
+class SymbolPtr extends TypePointer {
+  get type() {
+    return this.HEAPU32[this.ptr32];
+  }
+  get data() {
+    const len = this.HEAPU32[this.ptr32 + 4];
+    const ptr = this.HEAPU32[this.ptr32 + 5];
+    return Int8Array.from(this.HEAP8.subarray(ptr, ptr + len));
+  }
+  get points() {
+    const len = this.HEAPU32[this.ptr32 + 7];
+    const ptr = this.HEAPU32[this.ptr32 + 8];
+    const ptr32 = ptr >> 2;
+    const res = [];
+    for (let i = 0; i < len; ++i) {
+      const x = this.HEAP32[ptr32 + i * 2];
+      const y = this.HEAP32[ptr32 + i * 2 + 1];
+      res.push({x, y});
+    }
+    return res;
+  }
+  get next() {
+    const ptr = this.HEAPU32[this.ptr32 + 11];
+    if (!ptr) {
+      return null;
+    }
+    return new SymbolPtr(ptr, this.buf);
+  }
+  get time() {
+    return this.HEAPU32[this.ptr32 + 13];
+  }
+  get cacheCount() {
+    return this.HEAP32[this.ptr32 + 14];
+  }
+  get quality() {
+    return this.HEAP32[this.ptr32 + 15];
+  }
+}
+class SymbolSetPtr extends TypePointer {
+  get head() {
+    const ptr = this.HEAPU32[this.ptr32 + 2];
+    if (!ptr) {
+      return null;
+    }
+    return new SymbolPtr(ptr, this.buf);
+  }
+}
 
 class WasmQRCode {
   constructor(canvas) {
@@ -26,45 +81,61 @@ class WasmQRCode {
     });
     this.events = {};
   }
-  async ready() {
-    await Module.onReady();
-    this.api = {
-      scanImage: Module.cwrap('scan_image', '', ['number', 'number', 'number']),
-      createBuffer: Module.cwrap('create_buffer', 'number', ['number', 'number']),
-      destroyBuffer: Module.cwrap('destroy_buffer', '', ['number'])
-    };
-    // set the function that should be called whenever a barcode is detected
-    Module['processResult'] = (symbol, data, polygon) => this.emit('detect', {
-      symbol,
-      data,
-      polygon
+  ready() {
+    if (this.inst) {
+      return Promise.resolve();
+    }
+    return instantiate().then(o => {
+      this.inst = o;
+      this.ptr = o._ImageScanner_create();
     });
-    this.ready = () => Promise.resolve();
   }
   detect(source, width, height) {
-    const {api, canvas, ctx} = this;
+    const {canvas, ctx} = this;
     Object.assign(canvas, {
       width,
       height
     });
-    // grab a frame from the media source and draw it to the canvas
     ctx.drawImage(source, 0, 0, width, height);
-    // get the image data from the canvas
-    const image = ctx.getImageData(0, 0, width, height);
-
-    // convert the image data to grayscale
-    const grayData = [];
-    const d = image.data;
-    for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-      grayData[j] = (d[i] * 66 + d[i + 1] * 129 + d[i + 2] * 25 + 4096) >> 8;
+    const dataBuf = ctx.getImageData(0, 0, width, height).data;
+    // write to WASM
+    const heap = this.inst.HEAPU8;
+    const data = new Uint8Array(dataBuf);
+    const len = width * height;
+    if (len * 4 !== data.byteLength) {
+      throw Error('dataBuf does not match width and height');
     }
-    // put the data into the allocated buffer
-    const p = this.api.createBuffer(image.width, image.height);
-    Module.HEAP8.set(grayData, p);
-    // call the scanner function
-    api.scanImage(p, image.width, image.height);
+    const buf = this.inst._malloc(len);
+    for (let i = 0; i < len; ++i) {
+      const r = data[i * 4];
+      const g = data[i * 4 + 1];
+      const b = data[i * 4 + 2];
+      heap[buf + i] = (r * 19595 + g * 38469 + b * 7472) >> 16;
+    }
+    const imagePtr = this.inst._Image_create(width, height, 0x30303859 /* Y800 */, buf, len, 1);
+    // scan
+    const count = this.inst._ImageScanner_scan(this.ptr, imagePtr);
+    console.log('count', count);
+    // read results
+    const res = this.inst._Image_get_symbols(imagePtr);
+    if (res !== 0) {
+      const set = new SymbolSetPtr(res, this.inst.HEAPU8.buffer);
+      const decoder = new TextDecoder();
+      let symbol = set.head;
+
+      while (symbol !== null) {
+        this.emit('detect', {
+          origin: 'wasm',
+          symbol: TYPES[symbol.type],
+          data: decoder.decode(symbol.data),
+          polygon: symbol.points.map(o => [o.x, o.y]).flat()
+        });
+
+        symbol = symbol.next;
+      }
+    }
     // destroy
-    api.destroyBuffer(p);
+    this.inst._Image_destory(imagePtr);
   }
   rect(e) {
     const xs = [
