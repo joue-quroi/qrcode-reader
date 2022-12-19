@@ -12,7 +12,7 @@ const notify = (msg, revert = true) => {
     }, 3000);
   }
 };
-notify.DEFALUT = 'Click on the "Start" button to scan from webcam or drop a local QR code or Bar code';
+notify.DEFALUT = `Click 'Start' to scan QR or barcode from webcam or drop a local file`;
 
 if (location.href.indexOf('mode=popup') !== -1) {
   document.body.classList.add('popup');
@@ -114,16 +114,22 @@ const tools = {
         return content.replace(urlRegex, '<a href="$1" target=_blank>$1</a>');
       };
 
-      const div = document.createElement('div');
+      const div = document.createElement('label');
+      div.data = e.data;
       div.id = id;
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+
       const symbol = document.createElement('span');
       symbol.textContent = 'Type: ' + e.symbol;
       const content = document.createElement('pre');
       content.innerHTML = urlify(e.data);
-      div.appendChild(symbol);
-      div.appendChild(content);
+      div.append(input);
+      div.append(symbol);
+      div.append(content);
       history.insertAdjacentElement('afterbegin', div);
       if (prefs.save) {
+        prefs.history = prefs.history.filter(o => o.data !== e.data);
         prefs.history.unshift({
           data: e.data,
           symbol: e.symbol
@@ -157,9 +163,12 @@ tabsView.addEventListener('tabs-view::change', ({detail}) => {
 // on image
 const listen = () => {
   const next = file => {
+    document.title = 'Loading Image ...';
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = function() {
+      document.title = chrome.runtime.getManifest().name;
       notify('', false);
       const ctx = canvas.getContext('2d');
       canvas.width = img.naturalWidth;
@@ -169,7 +178,10 @@ const listen = () => {
       ctx.drawImage(img, 0, 0);
       tools.detect(img, img.naturalWidth, img.naturalHeight);
     };
-    img.onerror = e => notify(e.message || 'Loading failed. Use right-click context menu to allow cross-origin access');
+    img.onerror = e => {
+      document.title = 'Loading Failed!';
+      notify(e.message || 'Loading failed. Use right-click context menu over the toolbar button to allow cross-origin access');
+    };
     img.src = typeof file === 'string' ? file : URL.createObjectURL(file);
   };
   document.querySelector('input[type=file]').addEventListener('change', e => {
@@ -287,6 +299,44 @@ document.getElementById('clean').addEventListener('click', () => {
     });
   }
 });
+
+document.getElementById('history').onchange = () => {
+  const b = Boolean(document.querySelector('#history input:checked'));
+
+  document.getElementById('copy').disabled = !b;
+  document.getElementById('delete').disabled = !b;
+};
+
+
+document.getElementById('copy').addEventListener('click', e => {
+  const content = [...document.querySelectorAll('#history input:checked')]
+    .map(e => e.closest('label').data)
+    .join('\n\n');
+
+  navigator.clipboard.writeText(content).then(() => {
+    e.target.value = 'Done!';
+    setTimeout(() => e.target.value = 'Copy', 750);
+  });
+});
+
+document.getElementById('delete').addEventListener('click', () => {
+  const ds = [...document.querySelectorAll('#history input:checked')]
+    .map(e => {
+      const div = e.closest('label');
+      const content = div.data;
+      div.remove();
+
+      return content;
+    });
+
+  chrome.storage.local.get({
+    history: []
+  }, prefs => {
+    prefs.history = prefs.history.filter(o => ds.includes(o.data) === false);
+    chrome.storage.local.set(prefs);
+  });
+});
+
 // Camera selector
 chrome.storage.local.get({
   camera: 0

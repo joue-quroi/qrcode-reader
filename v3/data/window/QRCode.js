@@ -115,7 +115,7 @@ class WasmQRCode {
     const imagePtr = this.inst._Image_create(width, height, 0x30303859 /* Y800 */, buf, len, 1);
     // scan
     const count = this.inst._ImageScanner_scan(this.ptr, imagePtr);
-    console.log('count', count);
+    console.info('count', count);
     // read results
     const res = this.inst._Image_get_symbols(imagePtr);
     if (res !== 0) {
