@@ -1,2 +1,11 @@
+MD5 (zbar.js) = 884f8cb10a196802f4fc8e3c71693a7a
 https://cdn.jsdelivr.net/npm/zbar.wasm@2.1.1/dist/zbar.js
+https://unpkg.com/browse/zbar.wasm@2.1.1/dist/zbar.js
+
+
+MD5 (zbar.wasm) = 5f90df2200eb4175f234046e0f31df9a
 https://cdn.jsdelivr.net/npm/zbar.wasm@2.1.1/dist/zbar.wasm
+https://unpkg.com/browse/zbar.wasm@2.1.1/dist/zbar.wasm
+
+Manual Building
+npm i zbar.wasm

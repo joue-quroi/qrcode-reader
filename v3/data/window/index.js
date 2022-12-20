@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // install network
-  if (chrome.declarativeNetRequest) {
+  if (chrome.declarativeNetRequest && /Firefox/.test(navigator.userAgent) === false) {
     chrome.runtime.sendMessage({
       method: 'me'
     }, tabId => {
