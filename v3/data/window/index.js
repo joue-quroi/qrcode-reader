@@ -2,6 +2,17 @@
 'use strict';
 
 const args = new URLSearchParams(location.search);
+const info = {};
+chrome.tabs.query({
+  currentWindow: true,
+  active: true
+}, tabs => {
+  if (tabs.length) {
+    info.tabId = tabs[0].id;
+    info.windowId = tabs[0].windowId;
+  }
+});
+
 
 const notify = (msg, revert = true) => {
   document.querySelector('[data-message]').dataset.message = msg === undefined ? notify.DEFALUT : msg;
@@ -86,7 +97,7 @@ const tools = {
       });
     },
     off() {
-      window.clearInterval(tools.vidoe.id);
+      clearInterval(tools.vidoe.id);
       try {
         for (const track of tools.stream.getTracks()) {
           track.stop();
@@ -111,7 +122,7 @@ const tools = {
     else {
       const urlify = content => {
         const urlRegex = /(https?:\/\/[^\s]+)/g;
-        return content.replace(urlRegex, '<a href="$1" target=_blank>$1</a>');
+        return content.replace(urlRegex, '<a href="$1" target=_blank class="link">$1</a>');
       };
 
       const div = document.createElement('label');
@@ -164,13 +175,15 @@ tabsView.addEventListener('tabs-view::change', ({detail}) => {
 const listen = () => {
   const next = file => {
     document.title = 'Loading Image ...';
+    notify('Loading...', false);
 
     const img = new Image();
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     img.crossOrigin = 'anonymous';
     img.onload = function() {
       document.title = chrome.runtime.getManifest().name;
       notify('', false);
-      const ctx = canvas.getContext('2d');
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -202,6 +215,38 @@ const listen = () => {
   if (args.has('href')) {
     next(args.get('href'));
   }
+  if (args.get('mode') === 'sidebar') {
+    chrome.runtime.sendMessage({
+      method: 'args'
+    }, o => {
+      if (o && o.href) {
+        next(o.href);
+      }
+    });
+    chrome.runtime.onMessage.addListener(request => {
+      if (request.href && request.method === 'sidebar-action' && request.windowId === info.windowId) {
+        // clean
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        notify('Preparing...', false);
+        // proceed
+        if (tabsView.active().dataset.tab === 'results') {
+          tabsView.addEventListener('tabs-view::change', () => {
+            next(request.href);
+          }, {once: true});
+
+          tabsView.keypress({
+            metaKey: true,
+            code: 'Digit1',
+            key: 1
+          });
+        }
+        else {
+          next(request.href);
+        }
+      }
+    });
+  }
 };
 
 // init
@@ -218,18 +263,20 @@ document.addEventListener('DOMContentLoaded', () => {
       notify(undefined, false);
     }
     // history
-    for (const e of prefs.history.reverse()) {
-      tools.append(e, false);
+    if (prefs.save) {
+      for (const e of prefs.history.reverse()) {
+        tools.append(e, false);
+      }
     }
     //
     listen();
   });
 
-  // install network
-  if (chrome.declarativeNetRequest && /Firefox/.test(navigator.userAgent) === false) {
-    chrome.runtime.sendMessage({
-      method: 'me'
-    }, tabId => {
+  chrome.runtime.sendMessage({
+    method: 'me'
+  }, tabId => {
+    // install network
+    if (chrome.declarativeNetRequest && /Firefox/.test(navigator.userAgent) === false) {
       if (tabId) {
         chrome.declarativeNetRequest.updateSessionRules({
           removeRuleIds: [tabId],
@@ -258,11 +305,11 @@ document.addEventListener('DOMContentLoaded', () => {
       else {
         next();
       }
-    });
-  }
-  else {
-    next();
-  }
+    }
+    else {
+      next();
+    }
+  });
 });
 
 // prefs
@@ -360,3 +407,22 @@ document.getElementById('devices').addEventListener('change', e => chrome.storag
   tools.vidoe.off();
   tools.vidoe.on();
 }));
+
+// link opening
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('link') && e.isTrusted) {
+    e.preventDefault();
+    chrome.storage.local.get({
+      'open-links-windows': false
+    }, prefs => {
+      if (prefs['open-links-windows']) {
+        chrome.windows.create({
+          url: e.target.href
+        });
+      }
+      else {
+        e.target.click();
+      }
+    });
+  }
+}, true);

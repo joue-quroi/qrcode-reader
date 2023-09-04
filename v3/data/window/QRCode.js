@@ -76,7 +76,9 @@ class WasmQRCode {
   constructor(canvas) {
     canvas = canvas || document.createElement('canvas');
     Object.assign(this, {
-      ctx: canvas.getContext('2d'),
+      ctx: canvas.getContext('2d', {
+        willReadFrequently: true
+      }),
       canvas
     });
     this.events = {};

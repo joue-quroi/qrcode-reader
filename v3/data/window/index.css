@@ -5,9 +5,9 @@
   --bg: #eee;
   --border: #000;
   --link: #07c;
-  --header: #F5EBE0;
-  --footer: #F2DEBA;
-  --entry: #F5EBE0;
+  --header: #f5ebe0;
+  --footer: #f2deba;
+  --entry: #f5ebe0;
 }
 body {
   font-size: 13px;
@@ -98,18 +98,22 @@ div[data-id="tools"] input:not(:checked) + svg > path {
 [data-id="tools"] > * {
   padding: 10px;
   text-align: center;
-  min-width: 100px;
   height: 28px;
   line-height: 28px;
   user-select: none;
   background-color: transparent;
   position: relative;
 }
+[data-id="tools"] button,
 [data-id="tools"] input {
   border: none;
   outline: none;
   font-size: inherit;
   background-color: transparent;
+}
+[data-id="tools"] button:not(:disabled),
+[data-id="tools"] input:not(:disabled) {
+  cursor: pointer;
 }
 [data-id="tools"]:not(:hover) > *:not(:last-child)::after {
   content: ' ';
@@ -130,6 +134,13 @@ div[data-id="tools"] input:not(:checked) + svg > path {
     flex: 1;
   }
 }
+
+@media screen and (max-width: 400px) {
+  .minihide {
+    display: none;
+  }
+}
+
 [data-id="tools"] svg {
   margin-right: 5px;
   margin-top: -2px;
@@ -194,6 +205,8 @@ div[data-tab="scan"] {
 #devices:empty {
   display: none;
 }
+
+
 
 [hbox] {
   display: flex;

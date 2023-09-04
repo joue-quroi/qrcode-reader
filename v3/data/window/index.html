@@ -25,9 +25,9 @@
             <svg version="1.1" viewBox="0 0 24 24" width="12">
               <path d="M22 2v20h-20v-20h20zm2-2h-24v24h24v-24zm-5.541 8.409l-1.422-1.409-7.021 7.183-3.08-2.937-1.395 1.435 4.5 4.319 8.418-8.591z"/>
               <rect x="1" y="1" width="22" height="22" stroke="#000" stroke-width="2" fill="transparent"/>
-            </svg>Auto Start</label>
+            </svg><span>Auto <span class="minihide">Start</span></span></label>
           <label id="toggle" title="Start/Stop webcam scanning manually" class="btn">Start</label>
-          <label title="Scan a local image from disk">Local Image <input type="file" accept="image/*"></label>
+          <label title="Scan a local image from disk">Local <span class="minihide">Image </span><input type="file" accept="image/*"></label>
         </div>
       </div>
     </div>
@@ -36,7 +36,7 @@
         <div id="history" flex="1"></div>
         <div data-id="tools">
           <label title="Clear History">
-            <input type="button" id="clean" value="Clear History">
+            <button id="clean">Clear <span class="minihide">History</span></button>
           </label>
           <label title="Delete Selected Entries">
             <input type="button" id="delete" value="Delete" disabled>

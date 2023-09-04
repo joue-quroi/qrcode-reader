@@ -1,17 +1,28 @@
 'use strict';
 
-const onCommand = (o = {}) => chrome.storage.local.get({
+const onCommand = (tab, o = {}) => chrome.storage.local.get({
   mode: 'window'
 }, async prefs => {
   const args = new URLSearchParams();
   for (const [key, value] of Object.entries(o)) {
     args.set(key, value);
   }
+  onCommand.args = o;
 
   if (prefs.mode === 'tab') {
     args.set('mode', 'tab');
     chrome.tabs.create({
       url: 'data/window/index.html?' + args.toString()
+    });
+  }
+  else if (prefs.mode === 'sidebar') {
+    chrome.runtime.sendMessage({
+      method: 'sidebar-action',
+      windowId: tab.windowId,
+      ...o
+    }, () => chrome.runtime.lastError);
+    chrome.sidePanel.open({
+      windowId: tab.windowId
     });
   }
   else {
@@ -36,7 +47,7 @@ const onCommand = (o = {}) => chrome.storage.local.get({
   }
 });
 
-chrome.action.onClicked.addListener(() => onCommand());
+chrome.action.onClicked.addListener(tab => onCommand(tab, {}));
 
 const startup = () => {
   chrome.contextMenus.create({
@@ -60,7 +71,9 @@ const startup = () => {
 
   chrome.storage.local.get({
     'mode': 'window',
-    'show-on-image': true
+    'show-on-image': true,
+    'open-links-windows': false,
+    'save': true
   }, prefs => {
     chrome.contextMenus.create({
       title: 'Open in Window',
@@ -86,8 +99,20 @@ const startup = () => {
       checked: prefs.mode === 'popup',
       parentId: 'mode'
     });
+    chrome.contextMenus.create({
+      title: 'Open in Side Panel',
+      id: 'sidebar',
+      contexts: ['action'],
+      type: 'radio',
+      checked: prefs.mode === 'sidebar',
+      parentId: 'mode'
+    });
     chrome.action.setPopup({
       popup: prefs.mode === 'popup' ? 'data/window/index.html?mode=popup' : ''
+    });
+    chrome.sidePanel.setOptions({
+      path: 'data/window/index.html?mode=sidebar',
+      enabled: prefs.mode === 'sidebar'
     });
     chrome.contextMenus.create({
       title: 'Show Image Context Menu',
@@ -95,6 +120,22 @@ const startup = () => {
       contexts: ['action'],
       type: 'checkbox',
       checked: prefs['show-on-image'],
+      parentId: 'options'
+    });
+    chrome.contextMenus.create({
+      title: 'Open Links in New Windows',
+      id: 'open-links-windows',
+      contexts: ['action'],
+      type: 'checkbox',
+      checked: prefs['open-links-windows'],
+      parentId: 'options'
+    });
+    chrome.contextMenus.create({
+      title: 'Save Scanned Codes',
+      id: 'save',
+      contexts: ['action'],
+      type: 'checkbox',
+      checked: prefs['save'],
       parentId: 'options'
     });
     chrome.contextMenus.create({
@@ -108,7 +149,7 @@ const startup = () => {
 chrome.runtime.onInstalled.addListener(startup);
 chrome.runtime.onStartup.addListener(startup);
 
-chrome.contextMenus.onClicked.addListener(info => {
+chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'cors') {
     chrome.permissions.request({
       permissions: ['declarativeNetRequestWithHostAccess'],
@@ -116,8 +157,18 @@ chrome.contextMenus.onClicked.addListener(info => {
     }, () => chrome.runtime.reload());
   }
   else if (info.menuItemId === 'open-with') {
-    onCommand({
+    onCommand(tab, {
       href: info.srcUrl
+    });
+  }
+  else if (info.menuItemId === 'open-links-windows') {
+    chrome.storage.local.set({
+      'open-links-windows': info.checked
+    });
+  }
+  else if (info.menuItemId === 'save') {
+    chrome.storage.local.set({
+      'save': info.checked
     });
   }
   else if (info.menuItemId === 'show-on-image') {
@@ -129,9 +180,29 @@ chrome.contextMenus.onClicked.addListener(info => {
     });
   }
   else {
-    chrome.storage.local.set({
-      mode: info.menuItemId
-    });
+    if (info.menuItemId === 'sidebar') {
+      chrome.permissions.request({
+        permissions: ['sidePanel']
+      }, g => {
+        if (g) {
+          chrome.storage.local.set({
+            mode: info.menuItemId
+          });
+        }
+        else {
+          chrome.storage.local.get({
+            'mode': 'window'
+          }, prefs => chrome.contextMenus.update(prefs.mode, {
+            checked: true
+          }));
+        }
+      });
+    }
+    else {
+      chrome.storage.local.set({
+        mode: info.menuItemId
+      });
+    }
   }
 });
 
@@ -139,6 +210,9 @@ chrome.storage.onChanged.addListener(prefs => {
   if (prefs.mode) {
     chrome.action.setPopup({
       popup: prefs.mode.newValue === 'popup' ? 'data/window/index.html?mode=popup' : ''
+    });
+    chrome.sidePanel.setOptions({
+      enabled: prefs.mode.newValue === 'sidebar'
     });
   }
 });
@@ -152,6 +226,9 @@ if (chrome.declarativeNetRequest) {
 chrome.runtime.onMessage.addListener((request, sender, response) => {
   if (request.method === 'me') {
     response(sender?.tab?.id);
+  }
+  else if (request.method === 'args') {
+    response(onCommand.args || {});
   }
 });
 
