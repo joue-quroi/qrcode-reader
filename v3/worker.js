@@ -105,12 +105,13 @@ const startup = () => {
       contexts: ['action'],
       type: 'radio',
       checked: prefs.mode === 'sidebar',
-      parentId: 'mode'
+      parentId: 'mode',
+      enabled: navigator.userAgent.includes('Edg/') === false && navigator.userAgent.includes('Firefox/') === false
     });
     chrome.action.setPopup({
       popup: prefs.mode === 'popup' ? 'data/window/index.html?mode=popup' : ''
     });
-    chrome.sidePanel.setOptions({
+    chrome.sidePanel?.setOptions({
       path: 'data/window/index.html?mode=sidebar',
       enabled: prefs.mode === 'sidebar'
     });
@@ -147,7 +148,6 @@ const startup = () => {
   });
 };
 chrome.runtime.onInstalled.addListener(startup);
-chrome.runtime.onStartup.addListener(startup);
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'cors') {
@@ -211,7 +211,7 @@ chrome.storage.onChanged.addListener(prefs => {
     chrome.action.setPopup({
       popup: prefs.mode.newValue === 'popup' ? 'data/window/index.html?mode=popup' : ''
     });
-    chrome.sidePanel.setOptions({
+    chrome.sidePanel?.setOptions({
       enabled: prefs.mode.newValue === 'sidebar'
     });
   }

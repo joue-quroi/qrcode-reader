@@ -23,7 +23,8 @@ const notify = (msg, revert = true) => {
     }, 3000);
   }
 };
-notify.DEFALUT = `Click 'Start' to scan QR or barcode from webcam or drop a local file`;
+notify.DEFALUT = 'Click "Start" to scan QR codes or barcodes with your webcam.' +
+  ' You can also paste images from your clipboard using Ctrl + V or drop local files.';
 
 if (location.href.indexOf('mode=popup') !== -1) {
   document.body.classList.add('popup');
@@ -90,7 +91,7 @@ const tools = {
             tools.detect(video, canvas.width, canvas.height);
           }
         };
-        tools.vidoe.id = window.setInterval(detect, 200);
+        tools.vidoe.id = setInterval(detect, 200);
         detect();
       }).catch(e => {
         notify(e.message);
@@ -186,14 +187,18 @@ const listen = () => {
       notify('', false);
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#fff';
+      // works on transparent codes
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
-      tools.detect(img, img.naturalWidth, img.naturalHeight);
+      tools.detect(canvas, img.naturalWidth, img.naturalHeight);
     };
     img.onerror = e => {
       document.title = 'Loading Failed!';
-      notify(e.message || 'Loading failed. Use right-click context menu over the toolbar button to allow cross-origin access');
+      notify(
+        e.message ||
+        'Loading failed. Use right-click context menu over the toolbar button to allow cross-origin access'
+      );
     };
     img.src = typeof file === 'string' ? file : URL.createObjectURL(file);
   };
@@ -212,6 +217,17 @@ const listen = () => {
       }
     }
   });
+  document.addEventListener('paste', e => {
+    const items = [...e.clipboardData.items].filter(o => o.type.includes('image'));
+
+    for (const item of items) {
+      next(item.getAsFile());
+    }
+    if (items.length === 0) {
+      notify('No image found in the clipboard');
+    }
+  });
+
   if (args.has('href')) {
     next(args.get('href'));
   }
@@ -256,7 +272,9 @@ document.addEventListener('DOMContentLoaded', () => {
     Object.assign(prefs, ps);
     document.getElementById('auto-start').checked = prefs['auto-start'];
     // tabsView already loaded
-    if (prefs['auto-start'] && tabsView.ready && tabsView.active().dataset.tab === 'scan' && args.has('href') === false) {
+    if (
+      prefs['auto-start'] && tabsView.ready && tabsView.active().dataset.tab === 'scan' && args.has('href') === false
+    ) {
       tools.vidoe.on();
     }
     else {

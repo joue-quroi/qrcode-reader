@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.2.6",
+  "version": "0.2.7",
   "name": "QR Code Reader",
   "description": "a multiple QR- and bar-code scanner that supports scanning from webcam and local images",
   "permissions": [
