@@ -175,6 +175,7 @@ tabsView.addEventListener('tabs-view::change', ({detail}) => {
 // on image
 const listen = () => {
   const next = file => {
+    console.log(file);
     document.title = 'Loading Image ...';
     notify('Loading...', false);
 
@@ -221,6 +222,7 @@ const listen = () => {
     const items = [...e.clipboardData.items].filter(o => o.type.includes('image'));
 
     for (const item of items) {
+      console.log(item, item.getAsFile());
       next(item.getAsFile());
     }
     if (items.length === 0) {
@@ -361,6 +363,14 @@ document.getElementById('clean').addEventListener('click', () => {
   if (window.confirm('Delete the entire history?')) {
     chrome.storage.local.remove('history', () => {
       history.textContent = '';
+      qrcode.clean(canvas);
+      // tools.vidoe.off();
+      notify(undefined, false);
+      tabsView.keypress({
+        metaKey: true,
+        code: 'Digit1',
+        key: 1
+      });
     });
   }
 });

@@ -50,6 +50,11 @@ const onCommand = (tab, o = {}) => chrome.storage.local.get({
 chrome.action.onClicked.addListener(tab => onCommand(tab, {}));
 
 const startup = () => {
+  if (startup.done) {
+    return;
+  }
+  startup.done = true;
+
   chrome.contextMenus.create({
     title: 'Mode',
     id: 'mode',
@@ -60,14 +65,12 @@ const startup = () => {
     id: 'options',
     contexts: ['action']
   });
-  if (/Firefox/.test(navigator.userAgent) === false) {
-    chrome.contextMenus.create({
-      title: 'Allow Cross Origin Image Rendering',
-      id: 'cors',
-      parentId: 'options',
-      contexts: ['action']
-    });
-  }
+  chrome.contextMenus.create({
+    title: 'Allow Cross Origin Image Rendering',
+    id: 'cors',
+    parentId: 'options',
+    contexts: ['action']
+  });
 
   chrome.storage.local.get({
     'mode': 'window',
@@ -152,7 +155,6 @@ chrome.runtime.onInstalled.addListener(startup);
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'cors') {
     chrome.permissions.request({
-      permissions: ['declarativeNetRequestWithHostAccess'],
       origins: ['*://*/*']
     }, () => chrome.runtime.reload());
   }
@@ -236,8 +238,7 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
 {
   const {management, runtime: {onInstalled, setUninstallURL, getManifest}, storage, tabs} = chrome;
   if (navigator.webdriver !== true) {
-    const page = getManifest().homepage_url;
-    const {name, version} = getManifest();
+    const {homepage_url: page, name, version} = getManifest();
     onInstalled.addListener(({reason, previousVersion}) => {
       management.getSelf(({installType}) => installType === 'normal' && storage.local.get({
         'faqs': true,
@@ -246,7 +247,7 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
         if (reason === 'install' || (prefs.faqs && reason === 'update')) {
           const doUpdate = (Date.now() - prefs['last-update']) / 1000 / 60 / 60 / 24 > 45;
           if (doUpdate && previousVersion !== version) {
-            tabs.query({active: true, currentWindow: true}, tbs => tabs.create({
+            tabs.query({active: true, lastFocusedWindow: true}, tbs => tabs.create({
               url: page + '?version=' + version + (previousVersion ? '&p=' + previousVersion : '') + '&type=' + reason,
               active: reason === 'install',
               ...(tbs && tbs.length && {index: tbs[0].index + 1})

@@ -1,37 +1,47 @@
 {
   "manifest_version": 3,
-  "version": "0.2.7",
+  "version": "0.2.9",
   "name": "QR Code Reader",
   "description": "a multiple QR- and bar-code scanner that supports scanning from webcam and local images",
   "permissions": [
     "storage",
-    "contextMenus"
+    "contextMenus",
+    "declarativeNetRequestWithHostAccess"
    ],
   "optional_permissions": [
-    "declarativeNetRequestWithHostAccess",
     "sidePanel"
   ],
   "optional_host_permissions": [
     "*://*/*"
   ],
    "background": {
-    "service_worker": "worker.js"
+    "service_worker": "worker.js",
+    "scripts": ["worker.js"]
   },
   "homepage_url": "https://webextension.org/listing/qrcode-reader.html",
   "icons": {
-    "16": "data/icons/16.png",
-    "19": "data/icons/19.png",
-    "32": "data/icons/32.png",
-    "38": "data/icons/38.png",
-    "48": "data/icons/48.png",
-    "64": "data/icons/64.png",
-    "128": "data/icons/128.png",
-    "192": "data/icons/192.png",
-    "256": "data/icons/256.png",
-    "512": "data/icons/512.png"
+    "16": "/data/icons/16.png",
+    "19": "/data/icons/19.png",
+    "32": "/data/icons/32.png",
+    "38": "/data/icons/38.png",
+    "48": "/data/icons/48.png",
+    "64": "/data/icons/64.png",
+    "128": "/data/icons/128.png",
+    "192": "/data/icons/192.png",
+    "256": "/data/icons/256.png",
+    "512": "/data/icons/512.png"
   },
   "action": {},
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "commands": {
+    "_execute_action": {}
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{62391615-4d17-4257-919b-369c26a4e628}",
+      "strict_min_version": "128.0"
+    }
   }
 }
