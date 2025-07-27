@@ -20,7 +20,7 @@ const notify = (msg, revert = true) => {
   if (revert) {
     notify.id = setTimeout(() => {
       document.querySelector('[data-message]').dataset.message = notify.DEFALUT;
-    }, 3000);
+    }, 5000);
   }
 };
 notify.DEFALUT = 'Click "Start" to scan QR codes or barcodes with your webcam.' +
