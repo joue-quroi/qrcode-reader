@@ -56,6 +56,11 @@ const startup = async () => {
   startup.done = true;
 
   chrome.contextMenus.create({
+    title: 'Open Samples',
+    id: 'samples',
+    contexts: ['action']
+  });
+  chrome.contextMenus.create({
     title: 'Mode',
     id: 'mode',
     contexts: ['action']
@@ -152,7 +157,12 @@ const startup = async () => {
 chrome.runtime.onInstalled.addListener(startup);
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'cors') {
+  if (info.menuItemId === 'samples') {
+    chrome.tabs.create({
+      url: chrome.runtime.getManifest().homepage_url
+    });
+  }
+  else if (info.menuItemId === 'cors') {
     chrome.permissions.request({
       origins: ['*://*/*']
     }, () => chrome.runtime.reload());
