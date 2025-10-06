@@ -1,8 +1,10 @@
 'use strict';
 
-const onCommand = (tab, o = {}) => chrome.storage.local.get({
-  mode: 'window'
-}, async prefs => {
+const onCommand = async (tab, o = {}) => {
+  const prefs = await chrome.storage.local.get({
+    mode: 'window'
+  });
+
   const args = new URLSearchParams();
   for (const [key, value] of Object.entries(o)) {
     args.set(key, value);
@@ -20,36 +22,34 @@ const onCommand = (tab, o = {}) => chrome.storage.local.get({
       method: 'sidebar-action',
       windowId: tab.windowId,
       ...o
-    }, () => chrome.runtime.lastError);
+    }).catch(() => {});
     chrome.sidePanel.open({
       windowId: tab.windowId
     });
   }
   else {
     const win = await chrome.windows.getCurrent();
-
     args.set('mode', 'window');
-    chrome.storage.local.get({
+    const prefs = await chrome.storage.local.get({
       'window.width': 400,
       'window.height': 600,
       'window.left': win.left + Math.round((win.width - 400) / 2),
       'window.top': win.top + Math.round((win.height - 600) / 2)
-    }, prefs => {
-      chrome.windows.create({
-        url: '/data/window/index.html?' + args.toString(),
-        width: prefs['window.width'],
-        height: prefs['window.height'],
-        left: prefs['window.left'],
-        top: prefs['window.top'],
-        type: 'popup'
-      });
+    });
+    chrome.windows.create({
+      url: '/data/window/index.html?' + args.toString(),
+      width: prefs['window.width'],
+      height: prefs['window.height'],
+      left: prefs['window.left'],
+      top: prefs['window.top'],
+      type: 'popup'
     });
   }
-});
+};
 
 chrome.action.onClicked.addListener(tab => onCommand(tab, {}));
 
-const startup = () => {
+const startup = async () => {
   if (startup.done) {
     return;
   }
@@ -72,82 +72,81 @@ const startup = () => {
     contexts: ['action']
   });
 
-  chrome.storage.local.get({
+  const prefs = await chrome.storage.local.get({
     'mode': 'window',
     'show-on-image': true,
     'open-links-windows': false,
     'save': true
-  }, prefs => {
-    chrome.contextMenus.create({
-      title: 'Open in Window',
-      id: 'window',
-      contexts: ['action'],
-      type: 'radio',
-      checked: prefs.mode === 'window',
-      parentId: 'mode'
-    });
-    chrome.contextMenus.create({
-      title: 'Open in Tab',
-      id: 'tab',
-      contexts: ['action'],
-      type: 'radio',
-      checked: prefs.mode === 'tab',
-      parentId: 'mode'
-    });
-    chrome.contextMenus.create({
-      title: 'Open in Popup',
-      id: 'popup',
-      contexts: ['action'],
-      type: 'radio',
-      checked: prefs.mode === 'popup',
-      parentId: 'mode'
-    });
-    chrome.contextMenus.create({
-      title: 'Open in Side Panel',
-      id: 'sidebar',
-      contexts: ['action'],
-      type: 'radio',
-      checked: prefs.mode === 'sidebar',
-      parentId: 'mode',
-      enabled: navigator.userAgent.includes('Edg/') === false && navigator.userAgent.includes('Firefox/') === false
-    });
-    chrome.action.setPopup({
-      popup: prefs.mode === 'popup' ? 'data/window/index.html?mode=popup' : ''
-    });
-    chrome.sidePanel?.setOptions({
-      path: 'data/window/index.html?mode=sidebar',
-      enabled: prefs.mode === 'sidebar'
-    });
-    chrome.contextMenus.create({
-      title: 'Show Image Context Menu',
-      id: 'show-on-image',
-      contexts: ['action'],
-      type: 'checkbox',
-      checked: prefs['show-on-image'],
-      parentId: 'options'
-    });
-    chrome.contextMenus.create({
-      title: 'Open Links in New Windows',
-      id: 'open-links-windows',
-      contexts: ['action'],
-      type: 'checkbox',
-      checked: prefs['open-links-windows'],
-      parentId: 'options'
-    });
-    chrome.contextMenus.create({
-      title: 'Save Scanned Codes',
-      id: 'save',
-      contexts: ['action'],
-      type: 'checkbox',
-      checked: prefs['save'],
-      parentId: 'options'
-    });
-    chrome.contextMenus.create({
-      title: 'Open with QR Code Reader',
-      id: 'open-with',
-      contexts: ['image'],
-      visible: prefs['show-on-image']
-    });
+  });
+  chrome.contextMenus.create({
+    title: 'Open in Window',
+    id: 'window',
+    contexts: ['action'],
+    type: 'radio',
+    checked: prefs.mode === 'window',
+    parentId: 'mode'
+  });
+  chrome.contextMenus.create({
+    title: 'Open in Tab',
+    id: 'tab',
+    contexts: ['action'],
+    type: 'radio',
+    checked: prefs.mode === 'tab',
+    parentId: 'mode'
+  });
+  chrome.contextMenus.create({
+    title: 'Open in Popup',
+    id: 'popup',
+    contexts: ['action'],
+    type: 'radio',
+    checked: prefs.mode === 'popup',
+    parentId: 'mode'
+  });
+  chrome.contextMenus.create({
+    title: 'Open in Side Panel',
+    id: 'sidebar',
+    contexts: ['action'],
+    type: 'radio',
+    checked: prefs.mode === 'sidebar',
+    parentId: 'mode',
+    enabled: navigator.userAgent.includes('Edg/') === false && navigator.userAgent.includes('Firefox/') === false
+  });
+  chrome.action.setPopup({
+    popup: prefs.mode === 'popup' ? 'data/window/index.html?mode=popup' : ''
+  });
+  chrome.sidePanel?.setOptions({
+    path: 'data/window/index.html?mode=sidebar',
+    enabled: prefs.mode === 'sidebar'
+  });
+  chrome.contextMenus.create({
+    title: 'Show Image Context Menu',
+    id: 'show-on-image',
+    contexts: ['action'],
+    type: 'checkbox',
+    checked: prefs['show-on-image'],
+    parentId: 'options'
+  });
+  chrome.contextMenus.create({
+    title: 'Open Links in New Windows',
+    id: 'open-links-windows',
+    contexts: ['action'],
+    type: 'checkbox',
+    checked: prefs['open-links-windows'],
+    parentId: 'options'
+  });
+  chrome.contextMenus.create({
+    title: 'Save Scanned Codes',
+    id: 'save',
+    contexts: ['action'],
+    type: 'checkbox',
+    checked: prefs['save'],
+    parentId: 'options'
+  });
+  chrome.contextMenus.create({
+    title: 'Open with QR Code Reader',
+    id: 'open-with',
+    contexts: ['image'],
+    visible: prefs['show-on-image']
   });
 };
 chrome.runtime.onInstalled.addListener(startup);

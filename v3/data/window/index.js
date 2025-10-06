@@ -6,7 +6,7 @@ const info = {};
 chrome.tabs.query({
   currentWindow: true,
   active: true
-}, tabs => {
+}).then(tabs => {
   if (tabs.length) {
     info.tabId = tabs[0].id;
     info.windowId = tabs[0].windowId;
