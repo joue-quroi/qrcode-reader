@@ -13,7 +13,6 @@ chrome.tabs.query({
   }
 });
 
-
 const notify = (msg, revert = true) => {
   document.querySelector('[data-message]').dataset.message = msg === undefined ? notify.DEFALUT : msg;
   clearTimeout(notify.id);
@@ -32,6 +31,9 @@ if (location.href.indexOf('mode=popup') !== -1) {
 
 const tabsView = document.querySelector('tabs-view');
 const canvas = document.querySelector('canvas');
+const ctx = canvas.getContext('2d', {
+  willReadFrequently: true
+});
 const video = document.getElementById('video');
 const history = document.getElementById('history');
 const qrcode = new QRCode();
@@ -65,40 +67,38 @@ document.addEventListener('keydown', e => tabsView.keypress(e));
 // tools
 const tools = {
   vidoe: {
-    on() {
-      const deviceId = document.getElementById('devices').value;
-
-      const o = deviceId ? {
-        video: {
-          deviceId
-        }
-      } : {
-        video: {
-          facingMode: 'environment'
-        }
-      };
-
-      navigator.mediaDevices.getUserMedia(o).then(stream => {
-        tools.stream = stream;
-
-        notify('', false);
-        video.srcObject = stream;
-        video.style.visibility = 'visible';
-        const detect = () => {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          if (canvas.width && canvas.height) {
-            tools.detect(video, canvas.width, canvas.height);
+    async on() {
+      try {
+        const deviceId = document.getElementById('devices').value;
+        const o = deviceId ? {
+          video: {
+            deviceId
+          }
+        } : {
+          video: {
+            facingMode: 'environment'
           }
         };
-        tools.vidoe.id = setInterval(detect, 200);
+
+        const stream = tools.stream = video.srcObject = await navigator.mediaDevices.getUserMedia(o);
+        video.style.visibility = 'visible';
+        notify('', false);
+
+        const detect = async () => {
+          await tools.detect(video);
+          if (stream.active) {
+            clearTimeout(tools.vidoe.id);
+            tools.vidoe.id = setInterval(detect, 200);
+          }
+        };
         detect();
-      }).catch(e => {
+      }
+      catch (e) {
         notify(e.message);
-      });
+      }
     },
     off() {
-      clearInterval(tools.vidoe.id);
+      clearTimeout(tools.vidoe.id);
       try {
         for (const track of tools.stream.getTracks()) {
           track.stop();
@@ -109,10 +109,42 @@ const tools = {
       catch (e) {}
     }
   },
-  async detect(source, width, height) {
+  async detect(source) {
     cache.clear();
     await qrcode.ready();
-    qrcode.detect(source, width, height);
+
+    if (source.tagName === 'IMG') {
+      canvas.width = source.naturalWidth;
+      canvas.height = source.naturalHeight;
+
+      if (canvas.width && canvas.height) {
+        for (const filter of [
+          '', 'invert(1)', 'contrast(200%)', 'grayscale(100%)', 'contrast(50%)', 'grayscale(50%)', 'break'
+        ]) {
+          ctx.filter = filter !== 'break' ? filter : '';
+          ctx.drawImage(source, 0, 0);
+          if (filter === 'break') {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            notify('No QR code was detected.', false);
+            break;
+          }
+          const count = await qrcode.detect(canvas, canvas.width, canvas.height, filter || 'image');
+          if (count) {
+            break;
+          }
+        }
+      }
+    }
+    else if (source.tagName === 'VIDEO') {
+      canvas.width = source.videoWidth;
+      canvas.height = source.videoHeight;
+      if (canvas.width && canvas.height) {
+        qrcode.detect(source, canvas.width, canvas.height, 'video');
+      }
+    }
+    else {
+      throw Error('source is not supported');
+    }
   },
   append(e, focus = true) {
     const id = 'q-' + hashCode(e.data);
@@ -175,24 +207,16 @@ tabsView.addEventListener('tabs-view::change', ({detail}) => {
 // on image
 const listen = () => {
   const next = file => {
-    console.log(file);
     document.title = 'Loading Image ...';
     notify('Loading...', false);
 
     const img = new Image();
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     img.crossOrigin = 'anonymous';
     img.onload = function() {
       document.title = chrome.runtime.getManifest().name;
       notify('', false);
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      ctx.fillStyle = '#fff';
       // works on transparent codes
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      tools.detect(canvas, img.naturalWidth, img.naturalHeight);
+      tools.detect(img);
     };
     img.onerror = e => {
       document.title = 'Loading Failed!';
@@ -222,7 +246,6 @@ const listen = () => {
     const items = [...e.clipboardData.items].filter(o => o.type.includes('image'));
 
     for (const item of items) {
-      console.log(item, item.getAsFile());
       next(item.getAsFile());
     }
     if (items.length === 0) {
@@ -244,7 +267,6 @@ const listen = () => {
     chrome.runtime.onMessage.addListener(request => {
       if (request.href && request.method === 'sidebar-action' && request.windowId === info.windowId) {
         // clean
-        const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         notify('Preparing...', false);
         // proceed

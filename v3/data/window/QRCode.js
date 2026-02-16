@@ -92,7 +92,7 @@ class WasmQRCode {
       this.ptr = o._ImageScanner_create();
     });
   }
-  detect(source, width, height) {
+  detect(source, width, height, type) {
     const {canvas, ctx} = this;
     Object.assign(canvas, {
       width,
@@ -117,7 +117,7 @@ class WasmQRCode {
     const imagePtr = this.inst._Image_create(width, height, 0x30303859 /* Y800 */, buf, len, 1);
     // scan
     const count = this.inst._ImageScanner_scan(this.ptr, imagePtr);
-    console.info('count', count);
+    // console.info('wasm count', count, type);
     // read results
     const res = this.inst._Image_get_symbols(imagePtr);
     if (res !== 0) {
@@ -128,6 +128,7 @@ class WasmQRCode {
       while (symbol !== null) {
         this.emit('detect', {
           origin: 'wasm',
+          type,
           symbol: TYPES[symbol.type],
           data: decoder.decode(symbol.data),
           polygon: symbol.points.map(o => [o.x, o.y]).flat()
@@ -138,6 +139,8 @@ class WasmQRCode {
     }
     // destroy
     this.inst._Image_destory(imagePtr);
+
+    return Promise.resolve(count);
   }
   rect(e) {
     const xs = [
@@ -189,25 +192,35 @@ class QRCode extends WasmQRCode {
       });
     }
   }
-  detect(source, width, height) {
+  async detect(source, width, height, type) {
+    let count = 0;
+
     if (this.barcodeDetector) {
       const {ctx} = this;
       const image = ctx.getImageData(0, 0, width, height);
       // use native
-      this.barcodeDetector.detect(image).then(barcodes => {
+      count += await this.barcodeDetector.detect(image).then(barcodes => {
         for (const barcode of barcodes) {
           this.emit('detect', {
             origin: 'native',
+            type,
             symbol: barcode.format.toUpperCase().replace('_', '-'),
             data: barcode.rawValue,
             polygon: barcode.cornerPoints.map(o => [o.x, o.y]).flat()
           });
         }
+        // console.info('native count', barcodes.length, type);
+
+        return barcodes.length;
       });
     }
     try {
-      super.detect(source, width, height);
+      count += await super.detect(source, width, height, type);
     }
     catch (e) {}
+
+    this.clean(this.canvas);
+
+    return count;
   }
 }
