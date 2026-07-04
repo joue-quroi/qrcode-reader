@@ -101,18 +101,20 @@ class WasmQRCode {
       height
     });
     ctx.drawImage(source, 0, 0, width, height);
+
     const barcode = await qured.decode(canvas.toDataURL());
     if (barcode) {
-      this.emit('detect', {
+      console.info('qured count', 1, type);
+      return [{
         origin: 'qured',
         type,
         symbol: barcode.format.toUpperCase().replace('_', '-'),
         data: barcode.text,
-        polygon: barcode.points.map(o => [o.x, o.y]).flat()
-      });
-      return 1;
+        polygon: barcode.points
+      }];
     }
-    return 0;
+    console.info('qured count', 0, type);
+    return [];
   }
   zbar(source, width, height, type) {
     const {canvas, ctx} = this;
@@ -139,21 +141,32 @@ class WasmQRCode {
     const imagePtr = this.inst._Image_create(width, height, 0x30303859 /* Y800 */, buf, len, 1);
     // scan
     const count = this.inst._ImageScanner_scan(this.ptr, imagePtr);
-    console.info('wasm count', count, type);
+    console.info('zbar count', count, type);
     // read results
     const res = this.inst._Image_get_symbols(imagePtr);
+    const results = [];
     if (res !== 0) {
       const set = new SymbolSetPtr(res, this.inst.HEAPU8.buffer);
       const decoder = new TextDecoder();
       let symbol = set.head;
 
       while (symbol !== null) {
-        this.emit('detect', {
-          origin: 'wasm',
+        // Find centroid
+        const center = {
+          x: symbol.points.reduce((sum, p) => sum + p.x, 0) / symbol.points.length,
+          y: symbol.points.reduce((sum, p) => sum + p.y, 0) / symbol.points.length
+        };
+
+        results.push({
+          origin: 'zbar',
           type,
           symbol: TYPES[symbol.type],
           data: decoder.decode(symbol.data),
-          polygon: symbol.points.map(o => [o.x, o.y]).flat()
+          polygon: [...symbol.points].sort((a, b) => {
+            const angleA = Math.atan2(a.y - center.y, a.x - center.x);
+            const angleB = Math.atan2(b.y - center.y, b.x - center.x);
+            return angleA - angleB;
+          })
         });
 
         symbol = symbol.next;
@@ -162,30 +175,33 @@ class WasmQRCode {
     // destroy
     this.inst._Image_destory(imagePtr);
 
-    return Promise.resolve(count);
-  }
-  rect(e) {
-    const xs = [
-      Math.min(...e.polygon.filter((a, i) => i % 2 === 0)),
-      Math.max(...e.polygon.filter((a, i) => i % 2 === 0))
-    ];
-    const ys = [
-      Math.min(...e.polygon.filter((a, i) => i % 2 === 1)),
-      Math.max(...e.polygon.filter((a, i) => i % 2 === 1))
-    ];
-    if (e.symbol.toUpperCase() === 'QR-CODE' || e.origin === 'native') {
-      return [e.polygon[0], e.polygon[1], xs[1] - e.polygon[0], ys[1] - e.polygon[1]];
-    }
-    else {
-      return [e.polygon[0], e.polygon[1], xs[0] - e.polygon[0], ys[1] - e.polygon[1]];
-    }
+    return Promise.resolve(results);
   }
   draw(e, canvas = this.canvas) {
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = e.origin === 'native' ? 'red' : 'blue';
+    ctx.strokeStyle = ctx.fillStyle = {
+      'zbar': 'blue',
+      'qured': 'green'
+    }[e.origin] || 'red';
     ctx.globalAlpha = 0.2;
-    const [x, y, w, h] = this.rect(e);
-    ctx.fillRect(x - 10, y - 10, w + 20, h + 20);
+    ctx.lineWidth = 5;
+
+    if (e.polygon.length === 2) {
+      const xmin = Math.min(...e.polygon.map(o => o.x));
+      const xmax = Math.max(...e.polygon.map(o => o.x));
+      const ymin = Math.min(...e.polygon.map(o => o.y));
+      const ymax = Math.max(...e.polygon.map(o => o.y));
+      ctx.fillRect(xmin, ymin, (xmax - xmin) || 10, (ymax - ymin) || 10);
+    }
+    else {
+      ctx.beginPath();
+      ctx.moveTo(e.polygon[0].x, e.polygon[0].y);
+      for (let i = 1; i < e.polygon.length; i++) {
+        ctx.lineTo(e.polygon[i].x, e.polygon[i].y);
+      }
+      ctx.closePath(); // connects last vertex to first
+      ctx.fill();
+    }
   }
   clean(canvas) {
     const ctx = canvas.getContext('2d');
@@ -214,52 +230,33 @@ export class QRCode extends WasmQRCode {
       });
     }
   }
-  async detect(source, width, height, type) {
-    let count = 0;
-
-    const t = document.title;
-
+  native(source, width, height, type) {
     if (this.barcodeDetector) {
-      document.title = '[1/3] Using native. Please wait...';
-      const {ctx} = this;
-      const image = ctx.getImageData(0, 0, width, height);
       // use native
-      count += await this.barcodeDetector.detect(image).then(barcodes => {
+      const {canvas, ctx} = this;
+      Object.assign(canvas, {
+        width,
+        height
+      });
+      ctx.drawImage(source, 0, 0, width, height);
+
+      return this.barcodeDetector.detect(canvas).then(barcodes => {
+        const results = [];
         for (const barcode of barcodes) {
-          this.emit('detect', {
+          results.push({
             origin: 'native',
             type,
             symbol: barcode.format.toUpperCase().replace('_', '-'),
             data: barcode.rawValue,
-            polygon: barcode.cornerPoints.map(o => [o.x, o.y]).flat()
+            polygon: barcode.cornerPoints
           });
         }
         console.info('native count', barcodes.length, type);
 
-        return barcodes.length;
+        return results;
       });
     }
-    try {
-      document.title = '[2/3] Using ZBar. Please wait...';
-      count += await this.zbar(source, width, height, type);
-    }
-    catch (e) {
-      console.error('zbar', e);
-    }
 
-    try {
-      document.title = '[3/3] Using Qured. Please wait...';
-      const n = await this.qured(source, width, height, type);
-      console.info('qured count', n, type);
-      count += n;
-    }
-    catch (e) {
-      console.error('qured', e);
-    }
-    document.title = t;
-
-    this.clean(this.canvas);
-
-    return count;
+    return [];
   }
 }

@@ -48,18 +48,20 @@ const hashCode = s => Array.from(s).reduce((s, c) => Math.imul(31, s) + c.charCo
 
 const cache = new Set();
 
-qrcode.on('detect', e => {
-  if (cache.has(e.data) === false) {
-    qrcode.draw(e, canvas);
-    cache.add(e.data);
-  }
+const parse = results => {
+  for (const e of results) {
+    if (cache.has(e.data) === false) {
+      qrcode.draw(e, canvas);
+      cache.add(e.data);
+    }
 
-  if (tools.stream && tools.stream.active) {
-    tools.vidoe.off();
+    if (tools.stream && tools.stream.active) {
+      tools.vidoe.off();
+    }
+    // add to update history
+    tools.append(e);
   }
-  // add to update history
-  tools.append(e);
-});
+};
 
 // focus
 document.addEventListener('keydown', e => tabsView.keypress(e));
@@ -84,7 +86,7 @@ const tools = {
         notify('', false);
 
         const detect = async () => {
-          await tools.detect(video);
+          await tools.detect(video).then(parse);
           if (stream.active) {
             clearTimeout(tools.vidoe.id);
             tools.vidoe.id = setInterval(detect, 200);
@@ -104,6 +106,7 @@ const tools = {
         }
         video.style.visibility = 'hidden';
         qrcode.clean(canvas);
+        document.title = 'QR Code Reader';
       }
       catch (e) {}
     }
@@ -118,28 +121,50 @@ const tools = {
 
       if (canvas.width && canvas.height) {
         for (const filter of [
-          '', 'invert(1)', 'contrast(200%)', 'grayscale(100%)', 'contrast(50%)', 'grayscale(50%)', 'break'
+          '', 'invert(1)', 'contrast(200%)', 'grayscale(100%)', 'contrast(50%)', 'grayscale(50%)'
         ]) {
           ctx.filter = filter !== 'break' ? filter : '';
           ctx.drawImage(source, 0, 0);
-          if (filter === 'break') {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            notify('No QR code was detected.', false);
-            break;
-          }
-          const count = await qrcode.detect(canvas, canvas.width, canvas.height, filter || 'image');
-          if (count) {
-            break;
+
+          const type = filter || 'image';
+
+          const results = [];
+
+          document.title = `[1/3 - ${type}] Using native. Please wait...`;
+          results.push(...await qrcode.native(canvas, canvas.width, canvas.height, type));
+
+          document.title = `[2/3 - ${type}] Using ZBar. Please wait...`;
+          ctx.drawImage(source, 0, 0);
+          results.push(...await qrcode.zbar(canvas, canvas.width, canvas.height, type));
+
+          document.title = `[3/3 - ${type}] Using Qured. Please wait...`;
+          ctx.drawImage(source, 0, 0);
+          results.push(...await qrcode.qured(canvas, canvas.width, canvas.height, type));
+
+          if (results.length) {
+            return results;
           }
         }
       }
+
+      return [];
     }
     else if (source.tagName === 'VIDEO') {
       canvas.width = source.videoWidth;
       canvas.height = source.videoHeight;
+      const results = [];
       if (canvas.width && canvas.height) {
-        qrcode.detect(source, canvas.width, canvas.height, 'video');
+        document.title = `[1/2] Using native. Please wait...`;
+        ctx.drawImage(source, 0, 0);
+        results.push(...await qrcode.native(canvas, canvas.width, canvas.height, 'video'));
+
+        document.title = `[2/2] Using ZBar. Please wait...`;
+        ctx.drawImage(source, 0, 0);
+        results.push(...await qrcode.zbar(canvas, canvas.width, canvas.height, 'video'));
       }
+
+
+      return results;
     }
     else {
       throw Error('source is not supported');
@@ -215,7 +240,15 @@ const listen = () => {
       document.title = chrome.runtime.getManifest().name;
       notify('', false);
       // works on transparent codes
-      tools.detect(img);
+      tools.detect(img).then(results => {
+        parse(results);
+        if (results.length === 0) {
+          qrcode.clean(canvas);
+          notify('Cannot detect any type of barcode in this image');
+        }
+
+        document.title = 'QR Code Reader';
+      });
     };
     img.onerror = e => {
       document.title = 'Loading Failed!';
