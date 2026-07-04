@@ -1,5 +1,4 @@
-/* global QRCode */
-'use strict';
+import {QRCode} from './QRCode.mjs';
 
 const args = new URLSearchParams(location.search);
 const info = {};

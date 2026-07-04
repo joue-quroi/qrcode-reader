@@ -1,5 +1,7 @@
 /* global instantiate, BarcodeDetector */
 
+import * as qured from './qured/qured.mjs';
+
 const TYPES = {
   8: 'EAN-8',
   9: 'UPC-E',
@@ -92,7 +94,27 @@ class WasmQRCode {
       this.ptr = o._ImageScanner_create();
     });
   }
-  detect(source, width, height, type) {
+  async qured(source, width, height, type) {
+    const {canvas, ctx} = this;
+    Object.assign(canvas, {
+      width,
+      height
+    });
+    ctx.drawImage(source, 0, 0, width, height);
+    const barcode = await qured.decode(canvas.toDataURL());
+    if (barcode) {
+      this.emit('detect', {
+        origin: 'qured',
+        type,
+        symbol: barcode.format.toUpperCase().replace('_', '-'),
+        data: barcode.text,
+        polygon: barcode.points.map(o => [o.x, o.y]).flat()
+      });
+      return 1;
+    }
+    return 0;
+  }
+  zbar(source, width, height, type) {
     const {canvas, ctx} = this;
     Object.assign(canvas, {
       width,
@@ -117,7 +139,7 @@ class WasmQRCode {
     const imagePtr = this.inst._Image_create(width, height, 0x30303859 /* Y800 */, buf, len, 1);
     // scan
     const count = this.inst._ImageScanner_scan(this.ptr, imagePtr);
-    // console.info('wasm count', count, type);
+    console.info('wasm count', count, type);
     // read results
     const res = this.inst._Image_get_symbols(imagePtr);
     if (res !== 0) {
@@ -180,7 +202,7 @@ class WasmQRCode {
   }
 }
 
-class QRCode extends WasmQRCode {
+export class QRCode extends WasmQRCode {
   constructor(...args) {
     super(...args);
 
@@ -195,7 +217,10 @@ class QRCode extends WasmQRCode {
   async detect(source, width, height, type) {
     let count = 0;
 
+    const t = document.title;
+
     if (this.barcodeDetector) {
+      document.title = '[1/3] Using native. Please wait...';
       const {ctx} = this;
       const image = ctx.getImageData(0, 0, width, height);
       // use native
@@ -209,15 +234,29 @@ class QRCode extends WasmQRCode {
             polygon: barcode.cornerPoints.map(o => [o.x, o.y]).flat()
           });
         }
-        // console.info('native count', barcodes.length, type);
+        console.info('native count', barcodes.length, type);
 
         return barcodes.length;
       });
     }
     try {
-      count += await super.detect(source, width, height, type);
+      document.title = '[2/3] Using ZBar. Please wait...';
+      count += await this.zbar(source, width, height, type);
     }
-    catch (e) {}
+    catch (e) {
+      console.error('zbar', e);
+    }
+
+    try {
+      document.title = '[3/3] Using Qured. Please wait...';
+      const n = await this.qured(source, width, height, type);
+      console.info('qured count', n, type);
+      count += n;
+    }
+    catch (e) {
+      console.error('qured', e);
+    }
+    document.title = t;
 
     this.clean(this.canvas);
 
