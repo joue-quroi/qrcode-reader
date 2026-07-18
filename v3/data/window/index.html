@@ -7,6 +7,10 @@
   <meta charset="utf-8">
 </head>
 <body>
+  <header>
+    <progress id="progress" value="100" max="100"></progress>
+    <div id="toast"></div>
+  </header>
   <tabs-view>
     <div title="Scan" data-tab="scan" data-active="true">
       <div vbox style="height: 100%">
@@ -27,7 +31,7 @@
               <rect x="1" y="1" width="22" height="22" stroke="#000" stroke-width="2" fill="transparent"/>
             </svg><span>Auto <span class="minihide">Start</span></span></label>
           <label id="toggle" title="Start/Stop webcam scanning manually" class="btn">Start</label>
-          <label title="Scan a local image from disk">Local <span class="minihide">Image </span><input type="file" accept="image/*"></label>
+          <label title="Scan a local image from disk">Local <span class="minihide">Image </span><input type="file" multiple accept="image/*"></label>
         </div>
       </div>
     </div>

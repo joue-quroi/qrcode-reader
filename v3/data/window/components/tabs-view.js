@@ -149,18 +149,18 @@ class TabsView extends HTMLElement {
       }
     });
     // resize
-    const resize = new ResizeObserver(() => {
-      const tab = [...tabs.children].filter(i => i.dataset.active === 'true').shift();
-      if (tab) {
-        this.navigate(tab.panel, 'panel', false);
-      }
-      else {
-        console.warn('Cannot find the active tab element');
-      }
-    });
-    setTimeout(() => {
-      resize.observe(this);
-    }, 1000);
+    // const resize = new ResizeObserver(() => {
+    //   const tab = [...tabs.children].filter(i => i.dataset.active === 'true').shift();
+    //   if (tab) {
+    //     this.navigate(tab.panel, 'panel', false);
+    //   }
+    //   else {
+    //     console.warn('Cannot find the active tab element');
+    //   }
+    // });
+    // setTimeout(() => {
+    //   resize.observe(this);
+    // }, 1000);
     // IntersectionObserver
     const intersect = entries => {
       for (const e of entries) {

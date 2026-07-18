@@ -156,7 +156,7 @@ const startup = async () => {
 };
 chrome.runtime.onInstalled.addListener(startup);
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === 'samples') {
     chrome.tabs.create({
       url: chrome.runtime.getManifest().homepage_url
@@ -168,6 +168,11 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     }, () => chrome.runtime.reload());
   }
   else if (info.menuItemId === 'open-with') {
+    if (info.srcUrl.startsWith('http')) {
+      await chrome.permissions.request({
+        origins: [info.srcUrl]
+      }).catch(() => {});
+    }
     onCommand(tab, {
       href: info.srcUrl
     });

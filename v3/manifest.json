@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.3.4",
+  "version": "0.3.5",
   "name": "QR Code Reader",
   "description": "recognize multiple QR codes and barcodes at once from webcam or local images",
   "permissions": [

@@ -1,20 +1,24 @@
 :root {
   --white: #fff;
+  --red: red;
   --dark: #dadada;
   --error: #ff4e4e;
   --bg: #eee;
+  --bg-alt: #ffd19e;
   --border: #000;
   --link: #07c;
   --header: #f5ebe0;
   --footer: #f2deba;
   --entry: #f5ebe0;
+  --scrll: #aba399;
 }
 body {
   font-size: 14px;
   line-height: 1.5;
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
   margin: 0;
-  display: flex;
+  display: grid;
+  grid-template-rows: min-content 1fr;
   height: 100vh;
   background-color: var(--bg);
   accent-color: var(--entry);
@@ -26,8 +30,8 @@ body.popup {
 tabs-view {
   --bg-dark: var(--header);
 
-  flex: 1;
   background-color: var(--white);
+  overflow: hidden;
 }
 input[type=file] {
   display: none;
@@ -43,6 +47,37 @@ select {
   text-shadow: rgb(240, 240, 240) 0 1px 0;
   padding-inline: 10px;
   border: solid 1px rgba(0, 0, 0, 0.25);
+}
+header {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-alt);
+
+  progress {
+    width: 100%;
+    border: none;
+    height: 3px;
+    background-color: transparent;
+
+    &[value="100"] {
+      display: none;
+    }
+    &::-webkit-progress-bar {
+      background-color: transparent;
+    }
+    &::-webkit-progress-value {
+      background-color: var(--red);
+    }
+    &::-moz-progress-bar {
+      background-color: var(--red);
+    }
+  }
+  #toast {
+    text-align: center;
+  }
+  #toast:not(:empty) {
+    padding: 5px;
+  }
 }
 #display {
   position: relative;
@@ -63,6 +98,10 @@ select {
   font-size: 100%;
   text-align: center;
 }
+#display:has(canvas[width])::before {
+  display: none;
+}
+
 #display > div {
   position: absolute;
   top: 0;
@@ -149,6 +188,8 @@ div[data-id="tools"] input:not(:checked) + svg > path {
 #history {
   position: relative;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrll) transparent;
 }
 #history:empty::before {
   content: 'There is no history to display!';
@@ -177,6 +218,7 @@ div[data-id="tools"] input:not(:checked) + svg > path {
   padding: 10px;
   background-color: var(--entry);
   overflow: auto;
+  scrollbar-width: thin;
 }
 #history input[type=checkbox] {
   justify-self: start;

@@ -21,8 +21,22 @@ const notify = (msg, revert = true) => {
     }, 10000);
   }
 };
+{
+  let id;
+  notify.inline = (msg, timeout = 3000) => {
+    self.toast.textContent = msg;
+    clearTimeout(id);
+    if (timeout !== -1) {
+      id = setTimeout(() => {
+        self.toast.textContent = '';
+      }, timeout);
+    }
+  };
+}
+
 notify.DEFALUT = 'Click "Start" to scan QR codes or barcodes with your webcam.' +
   ' You can also paste images from your clipboard using Ctrl + V or drop local files.';
+notify(undefined, false);
 
 if (location.href.indexOf('mode=popup') !== -1) {
   document.body.classList.add('popup');
@@ -36,6 +50,14 @@ const ctx = canvas.getContext('2d', {
 const video = document.getElementById('video');
 const history = document.getElementById('history');
 const qrcode = new QRCode();
+// to show notify.DEFALUT after process is done
+qrcode.clean = new Proxy(qrcode.clean, {
+  apply(target, self, args) {
+    args[0].removeAttribute('width');
+    args[0].removeAttribute('height');
+    return Reflect.apply(target, self, args);
+  }
+});
 
 const prefs = {
   'history': [],
@@ -48,8 +70,9 @@ const hashCode = s => Array.from(s).reduce((s, c) => Math.imul(31, s) + c.charCo
 
 const cache = new Set();
 
-const parse = results => {
-  for (const e of results) {
+const parse = (results, focus = true) => {
+  for (let n = 0; n < results.length; n += 1) {
+    const e = results[n];
     if (cache.has(e.data) === false) {
       qrcode.draw(e, canvas);
       cache.add(e.data);
@@ -59,7 +82,7 @@ const parse = results => {
       tools.vidoe.off();
     }
     // add to update history
-    tools.append(e);
+    tools.append(e, n === 0 ? focus : false);
   }
 };
 
@@ -83,7 +106,6 @@ const tools = {
 
         const stream = tools.stream = video.srcObject = await navigator.mediaDevices.getUserMedia(o);
         video.style.visibility = 'visible';
-        notify('', false);
 
         const detect = async () => {
           await tools.detect(video).then(parse);
@@ -95,7 +117,7 @@ const tools = {
         detect();
       }
       catch (e) {
-        notify(e.message);
+        notify.inline(e.message);
       }
     },
     off() {
@@ -106,12 +128,11 @@ const tools = {
         }
         video.style.visibility = 'hidden';
         qrcode.clean(canvas);
-        document.title = 'QR Code Reader';
       }
       catch (e) {}
     }
   },
-  async detect(source) {
+  async detect(source, progress = () => {}) {
     cache.clear();
     await qrcode.ready();
 
@@ -120,6 +141,8 @@ const tools = {
       canvas.height = source.naturalHeight;
 
       if (canvas.width && canvas.height) {
+        let percent = 0;
+
         for (const filter of [
           '', 'invert(1)', 'contrast(200%)', 'grayscale(100%)', 'contrast(50%)', 'grayscale(50%)'
         ]) {
@@ -130,23 +153,27 @@ const tools = {
 
           const results = [];
 
-          document.title = `[1/3 - ${type}] Using native. Please wait...`;
           results.push(...await qrcode.native(canvas, canvas.width, canvas.height, type));
+          percent += 1 / 6 / 3;
+          progress(percent);
 
-          document.title = `[2/3 - ${type}] Using ZBar. Please wait...`;
           ctx.drawImage(source, 0, 0);
           results.push(...await qrcode.zbar(canvas, canvas.width, canvas.height, type));
+          percent += 1 / 6 / 3;
+          progress(percent);
 
-          document.title = `[3/3 - ${type}] Using Qured. Please wait...`;
           ctx.drawImage(source, 0, 0);
           results.push(...await qrcode.qured(canvas, canvas.width, canvas.height, type));
+          percent += 1 / 6 / 3;
+          progress(percent);
 
           if (results.length) {
+            progress(1);
             return results;
           }
         }
       }
-
+      progress(1);
       return [];
     }
     else if (source.tagName === 'VIDEO') {
@@ -154,16 +181,17 @@ const tools = {
       canvas.height = source.videoHeight;
       const results = [];
       if (canvas.width && canvas.height) {
-        document.title = `[1/2] Using native. Please wait...`;
+        progress(0);
         ctx.drawImage(source, 0, 0);
         results.push(...await qrcode.native(canvas, canvas.width, canvas.height, 'video'));
 
-        document.title = `[2/2] Using ZBar. Please wait...`;
+        progress(0.5);
         ctx.drawImage(source, 0, 0);
         results.push(...await qrcode.zbar(canvas, canvas.width, canvas.height, 'video'));
       }
 
 
+      progress(1);
       return results;
     }
     else {
@@ -208,6 +236,7 @@ const tools = {
         });
       }
     }
+
     if (focus) {
       tabsView.keypress({
         metaKey: true,
@@ -230,81 +259,157 @@ tabsView.addEventListener('tabs-view::change', ({detail}) => {
 
 // on image
 const listen = () => {
-  const next = file => {
-    document.title = 'Loading Image ...';
-    notify('Loading...', false);
+  const jobs = [];
+  let counter = 0;
+  const errors = [];
+  let total = 0;
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = function() {
-      document.title = chrome.runtime.getManifest().name;
-      notify('', false);
-      // works on transparent codes
-      tools.detect(img).then(results => {
-        parse(results);
-        if (results.length === 0) {
-          qrcode.clean(canvas);
-          notify('Cannot detect any type of barcode in this image');
-        }
+  const add = (...files) => {
+    if (files.length) {
+      total += files.length;
+      jobs.push(...files);
+      next();
+    }
+  };
 
-        document.title = 'QR Code Reader';
+  const next = async () => {
+    if (next.busy) {
+      return;
+    }
+    next.busy = true;
+
+    const file = jobs.shift();
+    if (file) {
+      const delta = 1 / total * 100;
+      const pv = (total - jobs.length - 1) / total * 100;
+      self.progress.value = pv;
+
+      notify.inline(`Working on Image ${total - jobs.length}/${total}...`, -1);
+      await new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function() {
+          // works on transparent codes
+          tools.detect(img, progress => self.progress.value = pv + delta * progress).then(results => {
+            parse(results, counter === 0);
+            counter += results.length;
+          }).catch(e => errors.push(e)).finally(resolve);
+        };
+        img.onerror = e => {
+          errors.push('Cannot load this image');
+          resolve();
+        };
+        img.src = typeof file === 'string' ? file : URL.createObjectURL(file);
       });
-    };
-    img.onerror = e => {
-      document.title = 'Loading Failed!';
-      notify(
-        e.message ||
-        'Loading failed. Use right-click context menu over the toolbar button to allow cross-origin access'
-      );
-    };
-    img.src = typeof file === 'string' ? file : URL.createObjectURL(file);
+      next.busy = false;
+      next();
+    }
+    else {
+      if (counter === 0) {
+        if (errors.length === 0) {
+          qrcode.clean(canvas);
+          notify.inline('Cannot detect any type of barcode in this image');
+        }
+        else {
+          notify.inline(
+            errors.find(e => e) ||
+            'Loading failed. Use right-click context menu over the toolbar button to allow cross-origin access'
+          );
+        }
+      }
+      else {
+        notify.inline('', -1);
+      }
+
+      total = 0;
+      counter = 0;
+      errors.length = 0;
+      self.progress.value = 100;
+      next.busy = false;
+    }
   };
   document.querySelector('input[type=file]').addEventListener('change', e => {
     tools.vidoe.off();
-
-    next(e.target.files[0]);
+    add(...e.target.files);
     e.target.value = '';
   });
   document.addEventListener('dragover', e => e.preventDefault());
-  document.addEventListener('drop', e => {
+  document.addEventListener('drop', async e => {
     e.preventDefault();
+
+    const files = new Set();
+    const images = new Set();
+
     for (const file of e.dataTransfer.items) {
       if (file.kind === 'file' && file.type.startsWith('image/')) {
-        return next(file.getAsFile());
+        files.add(file.getAsFile());
+      }
+      if (file.type === 'text/html') {
+        let found = false;
+        const html = e.dataTransfer.getData('text/html');
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        for (const img of doc.querySelectorAll('img')) {
+          const base = e.dataTransfer.getData('text/uri-list') || location.href;
+          images.add(new URL(img.getAttribute('src'), base).href);
+          found = true;
+        }
+        if (!found) {
+          const a = doc.querySelector('a[href]');
+          if (a) {
+            images.add(a.href);
+            found = true;
+          }
+        }
+        if (!found) {
+          const url = (e.dataTransfer.getData('text/uri-list') || '').trim();
+          if (url) {
+            images.add(url);
+            found = true;
+          }
+        }
       }
     }
+    const origins = [...images].filter(a => a.startsWith('http'));
+    if (origins.size) {
+      await chrome.permissions.request({
+        origins
+      }).catch(() => {});
+    }
+
+    add(...files);
+    add(...images);
   });
   document.addEventListener('paste', e => {
     const items = [...e.clipboardData.items].filter(o => o.type.includes('image'));
 
     for (const item of items) {
-      next(item.getAsFile());
+      add(item.getAsFile());
     }
     if (items.length === 0) {
-      notify('No image found in the clipboard');
+      notify.inline('No image found in the clipboard');
     }
   });
 
   if (args.has('href')) {
-    next(args.get('href'));
+    add(args.get('href'));
   }
   if (args.get('mode') === 'sidebar') {
     chrome.runtime.sendMessage({
       method: 'args'
     }, o => {
       if (o && o.href) {
-        next(o.href);
+        add(o.href);
       }
     });
     chrome.runtime.onMessage.addListener(request => {
       if (request.href && request.method === 'sidebar-action' && request.windowId === info.windowId) {
         // clean
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        notify('Preparing...', false);
+        notify.inline('Preparing...', false);
         // proceed
         if (tabsView.active().dataset.tab === 'results') {
           tabsView.addEventListener('tabs-view::change', () => {
-            next(request.href);
+            add(request.href);
           }, {once: true});
 
           tabsView.keypress({
@@ -314,7 +419,7 @@ const listen = () => {
           });
         }
         else {
-          next(request.href);
+          add(request.href);
         }
       }
     });
@@ -332,9 +437,6 @@ document.addEventListener('DOMContentLoaded', () => {
       prefs['auto-start'] && tabsView.ready && tabsView.active().dataset.tab === 'scan' && args.has('href') === false
     ) {
       tools.vidoe.on();
-    }
-    else {
-      notify(undefined, false);
     }
     // history
     if (prefs.save) {
@@ -401,7 +503,6 @@ video.addEventListener('play', () => {
 video.addEventListener('suspend', () => {
   document.getElementById('display').dataset.mode = 'image';
   document.getElementById('toggle').textContent = 'Start';
-  notify(undefined, false);
 });
 // toggle
 document.getElementById('toggle').addEventListener('click', () => {
@@ -419,7 +520,6 @@ document.getElementById('clean').addEventListener('click', () => {
       history.textContent = '';
       qrcode.clean(canvas);
       // tools.vidoe.off();
-      notify(undefined, false);
       tabsView.keypress({
         metaKey: true,
         code: 'Digit1',
