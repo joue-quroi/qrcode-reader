@@ -71,18 +71,29 @@ const hashCode = s => Array.from(s).reduce((s, c) => Math.imul(31, s) + c.charCo
 const cache = new Set();
 
 const parse = (results, focus = true) => {
+  let first = focus;
   for (let n = 0; n < results.length; n += 1) {
     const e = results[n];
-    if (cache.has(e.data) === false) {
+    if (e.type === 'video') {
+      // boxes stamp onto the frozen frame; codes are deduped in the history
+      qrcode.draw(e, canvas);
+      if (cache.has(e.data) === false) {
+        cache.add(e.data);
+        tools.append(e, first);
+        first = false;
+      }
+    }
+    else if (cache.has(e.data) === false) {
       qrcode.draw(e, canvas);
       cache.add(e.data);
-    }
 
-    if (tools.stream && tools.stream.active) {
-      tools.vidoe.off();
+      if (tools.stream && tools.stream.active) {
+        tools.vidoe.off();
+      }
+      // add to update history
+      tools.append(e, first);
+      first = false;
     }
-    // add to update history
-    tools.append(e, n === 0 ? focus : false);
   }
 };
 
@@ -120,7 +131,7 @@ const tools = {
           }
           if (stream.active) {
             clearTimeout(tools.vidoe.id);
-            tools.vidoe.id = setInterval(detect, 200);
+            tools.vidoe.id = setInterval(detect, 500);
           }
         };
         detect();
@@ -129,41 +140,57 @@ const tools = {
         notify.inline(e.message);
       }
     },
-    off() {
+    off(keep) {
       clearTimeout(tools.vidoe.id);
       try {
         for (const track of tools.stream.getTracks()) {
           track.stop();
         }
         video.style.visibility = 'hidden';
-        qrcode.clean(canvas);
+        if (!keep) {
+          qrcode.clean(canvas);
+        }
       }
       catch (e) {}
     }
   },
   async detect(source, progress = () => {}) {
-    cache.clear();
     await qrcode.ready();
 
     if (source.tagName === 'IMG') {
+      cache.clear();
       canvas.width = source.naturalWidth;
       canvas.height = source.naturalHeight;
+      if (canvas.width && canvas.height) {
+        ctx.drawImage(source, 0, 0);
+      }
     }
     else if (source.tagName === 'VIDEO') {
-      canvas.width = source.videoWidth;
-      canvas.height = source.videoHeight;
+      // the <video> element shows the live stream; the canvas is a transparent
+      // overlay for detection boxes. All detection steps stay offscreen.
+      if (canvas.width !== source.videoWidth) {
+        canvas.width = source.videoWidth;
+      }
+      if (canvas.height !== source.videoHeight) {
+        canvas.height = source.videoHeight;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     else {
       throw Error('source is not supported');
     }
 
     if (canvas.width && canvas.height) {
-      // the visible canvas is display-only; detection runs in the engine worker
-      ctx.drawImage(source, 0, 0);
-
       const bitmap = await createImageBitmap(source);
       try {
-        return await qrcode.run(bitmap, source.tagName === 'IMG' ? 'image' : 'video', progress);
+        const [results, frame] = await qrcode.run(bitmap, source.tagName === 'IMG' ? 'image' : 'video', progress);
+        if (frame) {
+          // freeze on the scanned frame, like image mode
+          ctx.drawImage(frame, 0, 0);
+          frame.close();
+          tools.vidoe.off(true);
+        }
+        return results;
       }
       finally {
         bitmap.close();

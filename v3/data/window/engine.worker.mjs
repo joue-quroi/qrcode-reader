@@ -59,9 +59,23 @@ self.onmessage = async ({data: {id, bitmap, kind}}) => {
   const progress = value => self.postMessage({id, type: 'progress', value});
   try {
     await ready;
-    const results = kind === 'video' ? await detectVideo(bitmap, progress) : await detectImage(bitmap, progress);
-    bitmap.close();
-    self.postMessage({id, type: 'done', results});
+    if (kind === 'video') {
+      const results = await detectVideo(bitmap, progress);
+      const message = {id, type: 'done', results};
+      if (results.length) {
+        // hand the scanned frame back so the UI can freeze on it
+        self.postMessage({id, type: 'done', results, bitmap}, [bitmap]);
+      }
+      else {
+        bitmap.close();
+        self.postMessage(message);
+      }
+    }
+    else {
+      const results = await detectImage(bitmap, progress);
+      bitmap.close();
+      self.postMessage({id, type: 'done', results});
+    }
   }
   catch (e) {
     console.warn(e);
@@ -130,7 +144,7 @@ async function native(type) {
   }));
 }
 
-function zbar(type) {
+async function zbar(type) {
   const {inst} = engine;
   const width = canvas.width;
   const height = canvas.height;

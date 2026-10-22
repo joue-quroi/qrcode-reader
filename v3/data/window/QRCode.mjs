@@ -26,7 +26,7 @@ export class QRCode {
         }
         else if (data.type === 'done') {
           this.jobs.delete(data.id);
-          job.resolve(data.results);
+          job.resolve([data.results, data.bitmap]);
         }
         else if (data.type === 'error') {
           this.jobs.delete(data.id);
