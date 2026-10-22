@@ -9,3 +9,7 @@ https://unpkg.com/browse/zbar.wasm@2.1.1/dist/zbar.wasm
 
 Manual Building
 npm i zbar.wasm
+
+Modified (local):
+zbar.js UMD tail replaced with "export default instantiate;" so the glue
+loads as an ES module (imported by ../engine.worker.mjs). Original MD5 above.

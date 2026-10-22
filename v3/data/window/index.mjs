@@ -108,7 +108,16 @@ const tools = {
         video.style.visibility = 'visible';
 
         const detect = async () => {
-          await tools.detect(video).then(parse);
+          if (detect.busy) {
+            return;
+          }
+          detect.busy = true;
+          try {
+            await tools.detect(video).then(parse);
+          }
+          finally {
+            detect.busy = false;
+          }
           if (stream.active) {
             clearTimeout(tools.vidoe.id);
             tools.vidoe.id = setInterval(detect, 200);
@@ -139,64 +148,30 @@ const tools = {
     if (source.tagName === 'IMG') {
       canvas.width = source.naturalWidth;
       canvas.height = source.naturalHeight;
-
-      if (canvas.width && canvas.height) {
-        let percent = 0;
-
-        for (const filter of [
-          '', 'invert(1)', 'contrast(200%)', 'grayscale(100%)', 'contrast(50%)', 'grayscale(50%)'
-        ]) {
-          ctx.filter = filter !== 'break' ? filter : '';
-          ctx.drawImage(source, 0, 0);
-
-          const type = filter || 'image';
-
-          const results = [];
-
-          results.push(...await qrcode.native(canvas, canvas.width, canvas.height, type));
-          percent += 1 / 6 / 3;
-          progress(percent);
-
-          ctx.drawImage(source, 0, 0);
-          results.push(...await qrcode.zbar(canvas, canvas.width, canvas.height, type));
-          percent += 1 / 6 / 3;
-          progress(percent);
-
-          ctx.drawImage(source, 0, 0);
-          results.push(...await qrcode.qured(canvas, canvas.width, canvas.height, type));
-          percent += 1 / 6 / 3;
-          progress(percent);
-
-          if (results.length) {
-            progress(1);
-            return results;
-          }
-        }
-      }
-      progress(1);
-      return [];
     }
     else if (source.tagName === 'VIDEO') {
       canvas.width = source.videoWidth;
       canvas.height = source.videoHeight;
-      const results = [];
-      if (canvas.width && canvas.height) {
-        progress(0);
-        ctx.drawImage(source, 0, 0);
-        results.push(...await qrcode.native(canvas, canvas.width, canvas.height, 'video'));
-
-        progress(0.5);
-        ctx.drawImage(source, 0, 0);
-        results.push(...await qrcode.zbar(canvas, canvas.width, canvas.height, 'video'));
-      }
-
-
-      progress(1);
-      return results;
     }
     else {
       throw Error('source is not supported');
     }
+
+    if (canvas.width && canvas.height) {
+      // the visible canvas is display-only; detection runs in the engine worker
+      ctx.drawImage(source, 0, 0);
+
+      const bitmap = await createImageBitmap(source);
+      try {
+        return await qrcode.run(bitmap, source.tagName === 'IMG' ? 'image' : 'video', progress);
+      }
+      finally {
+        bitmap.close();
+      }
+    }
+
+    progress(1);
+    return [];
   },
   append(e, focus = true) {
     const id = 'q-' + hashCode(e.data);
