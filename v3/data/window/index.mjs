@@ -23,14 +23,21 @@ const notify = (msg, revert = true) => {
 };
 {
   let id;
+  const message = () => document.querySelector('#toast [data-id=message]');
+  const method = () => document.querySelector('#toast [data-id=method]');
   notify.inline = (msg, timeout = 3000) => {
-    self.toast.textContent = msg;
+    message().textContent = msg;
+    method().textContent = '';
     clearTimeout(id);
     if (timeout !== -1) {
       id = setTimeout(() => {
-        self.toast.textContent = '';
+        message().textContent = '';
+        method().textContent = '';
       }, timeout);
     }
+  };
+  notify.method = label => {
+    method().textContent = label;
   };
 }
 
@@ -286,13 +293,22 @@ const listen = () => {
       const pv = (total - jobs.length - 1) / total * 100;
       self.progress.value = pv;
 
-      notify.inline(`Working on Image ${total - jobs.length}/${total}...`, -1);
+      notify.inline(
+        typeof file === 'string' ? `Fetching Image ${total - jobs.length}/${total}...` :
+        `Working on Image ${total - jobs.length}/${total}...`, -1
+      );
       await new Promise(resolve => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = function() {
+          notify.inline(`Working on Image ${total - jobs.length}/${total}...`, -1);
           // works on transparent codes
-          tools.detect(img, progress => self.progress.value = pv + delta * progress).then(results => {
+          tools.detect(img, (progress, label) => {
+            self.progress.value = pv + delta * progress;
+            if (label) {
+              notify.method(label);
+            }
+          }).then(results => {
             parse(results, counter === 0);
             counter += results.length;
           }).catch(e => errors.push(e)).finally(resolve);

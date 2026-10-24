@@ -42,6 +42,15 @@ const FILTERS = [
   '', 'invert(1)', 'contrast(200%)', 'grayscale(100%)', 'contrast(50%)', 'grayscale(50%)'
 ];
 
+const FILTER_LABELS = {
+  '': 'original colors',
+  'invert(1)': 'inverted colors',
+  'contrast(200%)': 'high contrast',
+  'grayscale(100%)': 'grayscale',
+  'contrast(50%)': 'low contrast',
+  'grayscale(50%)': 'half gray'
+};
+
 const canvas = new OffscreenCanvas(1, 1);
 const ctx = canvas.getContext('2d', {
   willReadFrequently: true
@@ -99,7 +108,7 @@ ready.then(() => {
 });
 
 self.onmessage = async ({data: {id, bitmap, kind}}) => {
-  const progress = value => self.postMessage({id, type: 'progress', value});
+  const progress = (value, label) => self.postMessage({id, type: 'progress', value, label});
   try {
     await ready;
     const results = kind === 'video' ? await detectVideo(bitmap, progress) : await detectImage(bitmap, progress);
@@ -131,26 +140,30 @@ async function detectImage(bitmap, progress) {
   const UNITS = 33;
   let done = 0;
   let max = 0;
-  const post = value => {
+  const post = (value, label) => {
     if (value > max) {
       max = value;
-      progress(value);
+      progress(value, label);
     }
   };
-  const tick = n => post((done = Math.min(done + n, UNITS - 1)) / UNITS);
+  const tick = (n, label) => post((done = Math.min(done + n, UNITS - 1)) / UNITS, label);
 
   // try one CSS filter after another; the first filter with a match wins.
   // the engines of each filter run in parallel; zxing only runs once (on the
   // unfiltered image) as it detects inverted codes itself
+  const ENGINES = [
+    [native, 'Native'], [zbar, 'ZBar'], [quredDecode, 'qured'], [zxing, 'ZXing']
+  ];
   let results = [];
   for (const filter of FILTERS) {
     ctx.filter = filter;
     ctx.drawImage(bitmap, 0, 0);
     ctx.filter = '';
 
+    const engine = name => `${FILTER_LABELS[filter] || filter} : ${name}`;
     const type = filter || 'image';
-    const engines = filter ? [native, zbar, quredDecode] : [native, zbar, quredDecode, zxing];
-    for (const found of await Promise.all(engines.map(engine => safe(engine(type)).then(r => (tick(1), r))))) {
+    const engines = filter ? ENGINES.slice(0, 3) : ENGINES;
+    for (const found of await Promise.all(engines.map(([fn, name]) => safe(fn(type)).then(r => (tick(1, engine(name)), r))))) {
       results.push(...found);
     }
 
@@ -167,12 +180,12 @@ async function detectImage(bitmap, progress) {
     // multi-code pass: qured.decodeAll runs its own inversion and downscale
     // passes and reports every code it can find in one go
     results.push(...await safe(quredMulti()));
-    tick(1);
+    tick(1, 'qured · multi-code');
 
     // zxing pass: adds DataMatrix, Aztec, Micro QR, ... and tries harder
     if (results.length === 0) {
       results.push(...await safe(zxing('image', {tryDownscale: false})));
-      tick(1);
+      tick(1, 'ZXing · hard pass');
     }
 
     // upscale pass: small codes often need a higher-resolution render
@@ -181,10 +194,10 @@ async function detectImage(bitmap, progress) {
       canvas.height *= 2;
       ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       results.push(...(await Promise.all([
-        safe(native('2x')).then(r => (tick(1), r)),
-        safe(zbar('2x')).then(r => (tick(1), r)),
-        safe(quredDecode('2x', {aggressive: true})).then(r => (tick(1), r)),
-        safe(zxing('2x', {tryDownscale: false})).then(r => (tick(1), r))
+        safe(native('2x')).then(r => (tick(1, 'Native · 2x upscale'), r)),
+        safe(zbar('2x')).then(r => (tick(1, 'ZBar · 2x upscale'), r)),
+        safe(quredDecode('2x', {aggressive: true})).then(r => (tick(1, 'qured · 2x upscale'), r)),
+        safe(zxing('2x', {tryDownscale: false})).then(r => (tick(1, 'ZXing · 2x upscale'), r))
       ])).flat());
     }
   }
@@ -204,7 +217,7 @@ async function tileSweep(tick = () => {}) {
     return [];
   }
   const results = [];
-  for (const [i, j] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+  for (const [k, [i, j]] of [[0, 0], [1, 0], [0, 1], [1, 1]].entries()) {
     const x = Math.round(w * 0.4 * i);
     const y = Math.round(h * 0.4 * j);
     const width = Math.min(Math.round(w * 0.6), w - x);
@@ -214,9 +227,10 @@ async function tileSweep(tick = () => {}) {
     }
     const scale = Math.min(1, 900 / Math.max(width, height));
     const imageData = raster2(x, y, Math.round(width * scale), Math.round(height * scale));
+    const region = `region ${k + 1}/4`;
     for (const found of await Promise.all([
-      safe(zbarOn(imageData, 'tile')).then(r => (tick(1), r)),
-      safe(zxingOn(imageData, 'tile', {tryDownscale: false})).then(r => (tick(1), r))
+      safe(zbarOn(imageData, 'tile')).then(r => (tick(1, `ZBar · ${region}`), r)),
+      safe(zxingOn(imageData, 'tile', {tryDownscale: false})).then(r => (tick(1, `ZXing · ${region}`), r))
     ])) {
       results.push(...found);
     }

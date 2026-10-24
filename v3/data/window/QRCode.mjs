@@ -22,7 +22,7 @@ export class QRCode {
       else if (this.jobs.has(data.id)) {
         const job = this.jobs.get(data.id);
         if (data.type === 'progress') {
-          job.progress(data.value);
+          job.progress(data.value, data.label);
         }
         else if (data.type === 'done') {
           this.jobs.delete(data.id);

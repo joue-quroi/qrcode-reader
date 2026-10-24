@@ -73,9 +73,13 @@ header {
     }
   }
   #toast {
-    text-align: center;
+    display: grid;
+    grid-template-columns: 1fr min-content;
+    column-gap: 10px;
+    align-items: baseline;
+    white-space: nowrap;
   }
-  #toast:not(:empty) {
+  #toast:has(div:not(:empty)) {
     padding: 5px;
   }
 }
