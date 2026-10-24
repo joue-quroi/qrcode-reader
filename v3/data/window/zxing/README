@@ -1,0 +1,14 @@
+MD5 (index.mjs) = e9f5df125b10d3b3adeff3f06820b382
+https://cdn.jsdelivr.net/npm/zxing-wasm@2/reader/+esm
+https://www.jsdelivr.com/package/npm/zxing-wasm
+
+MD5 (zxing_reader.wasm) = e8dbdb752386ac2d36975acbf3ce1973
+https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/reader/zxing_reader.wasm
+https://unpkg.com/browse/zxing-wasm@2.2.4/dist/reader/zxing_reader.wasm
+
+Notes:
+- reader build only (no writer); extends format coverage to DataMatrix,
+  Aztec, Micro QR, Codabar, DataBar, ... which ZBar does not detect
+- the bundle's locateFile fallback points to the CDN; the engine instead
+  fetches the local zxing_reader.wasm and passes it as wasmBinary:
+  prepareZXingModule({overrides: {wasmBinary}, fireImmediately: true})

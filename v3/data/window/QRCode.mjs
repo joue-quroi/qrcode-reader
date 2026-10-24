@@ -64,6 +64,9 @@ export class QRCode {
     });
   }
   draw(e, canvas) {
+    if (!e.polygon.length) {
+      return;
+    }
     const ctx = canvas.getContext('2d');
     ctx.strokeStyle = ctx.fillStyle = {
       'zbar': 'blue',
